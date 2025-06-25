@@ -17,15 +17,15 @@ const kpiData = {
 };
 
 const weeklyRevenueData = {
-  ciudadela: Array.from({ length: 8 }, (_, i) => ({ week: `W${i + 1}`, revenue: Math.floor(Math.random() * (2000000 - 1000000 + 1) + 1000000), goal: 1875000 })),
-  floridablanca: Array.from({ length: 8 }, (_, i) => ({ week: `W${i + 1}`, revenue: Math.floor(Math.random() * (2800000 - 1500000 + 1) + 1500000), goal: 2450000 })),
-  piedecuesta: Array.from({ length: 8 }, (_, i) => ({ week: `W${i + 1}`, revenue: Math.floor(Math.random() * (1800000 - 800000 + 1) + 800000), goal: 1550000 })),
+  ciudadela: Array.from({ length: 8 }, (_, i) => ({ week: `S${i + 1}`, revenue: Math.floor(Math.random() * (2000000 - 1000000 + 1) + 1000000), goal: 1875000 })),
+  floridablanca: Array.from({ length: 8 }, (_, i) => ({ week: `S${i + 1}`, revenue: Math.floor(Math.random() * (2800000 - 1500000 + 1) + 1500000), goal: 2450000 })),
+  piedecuesta: Array.from({ length: 8 }, (_, i) => ({ week: `S${i + 1}`, revenue: Math.floor(Math.random() * (1800000 - 800000 + 1) + 800000), goal: 1550000 })),
 };
 
 const retentionChurnData = {
-  ciudadela: Array.from({ length: 4 }, (_, i) => ({ week: `W${i + 1}`, retention: 92 + (Math.random() * 4 - 2), churn: 8 - (Math.random() * 4 - 2) })),
-  floridablanca: Array.from({ length: 4 }, (_, i) => ({ week: `W${i + 1}`, retention: 88 + (Math.random() * 4 - 2), churn: 12 - (Math.random() * 4 - 2) })),
-  piedecuesta: Array.from({ length: 4 }, (_, i) => ({ week: `W${i + 1}`, retention: 95 + (Math.random() * 4 - 2), churn: 5 - (Math.random() * 4 - 2) })),
+  ciudadela: Array.from({ length: 4 }, (_, i) => ({ week: `S${i + 1}`, retention: 92 + (Math.random() * 4 - 2), churn: 8 - (Math.random() * 4 - 2) })),
+  floridablanca: Array.from({ length: 4 }, (_, i) => ({ week: `S${i + 1}`, retention: 88 + (Math.random() * 4 - 2), churn: 12 - (Math.random() * 4 - 2) })),
+  piedecuesta: Array.from({ length: 4 }, (_, i) => ({ week: `S${i + 1}`, retention: 95 + (Math.random() * 4 - 2), churn: 5 - (Math.random() * 4 - 2) })),
 };
 
 
@@ -35,13 +35,21 @@ const siteNames: Record<SiteId, string> = {
   piedecuesta: "VIBRA Piedecuesta",
 };
 
+const chartConfig = {
+  revenue: { label: 'Ingresos', color: 'hsl(var(--chart-1))' },
+  goal: { label: 'Meta', color: 'hsl(var(--chart-2))' },
+  retention: { label: 'Retención', color: 'hsl(var(--chart-1))' },
+  churn: { label: 'Abandono', color: 'hsl(var(--destructive))' },
+};
+
+
 export default function DashboardPage() {
   const { user, role } = useAuth();
   const [selectedSite, setSelectedSite] = useState<SiteId | 'global'>(role === 'CEO' ? 'global' : user?.siteId!);
 
   const dashboardTitle = useMemo(() => {
-    if (selectedSite === 'global') return "Global Dashboard";
-    return `Site Dashboard: ${siteNames[selectedSite]}`;
+    if (selectedSite === 'global') return "Panel Global";
+    return `Panel de Sede: ${siteNames[selectedSite]}`;
   }, [selectedSite]);
 
   const currentKpis = selectedSite !== 'global' ? kpiData[selectedSite] : null;
@@ -62,11 +70,11 @@ export default function DashboardPage() {
         <h2 className="text-3xl font-bold tracking-tight">{dashboardTitle}</h2>
         {role === 'CEO' && (
           <Select onValueChange={(value: SiteId | 'global') => setSelectedSite(value)} defaultValue="global">
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select a site" />
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Selecciona una sede" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="global">Global Summary</SelectItem>
+              <SelectItem value="global">Resumen Global</SelectItem>
               <SelectItem value="ciudadela">VIBRA Ciudadela</SelectItem>
               <SelectItem value="floridablanca">VIBRA Floridablanca</SelectItem>
               <SelectItem value="piedecuesta">VIBRA Piedecuesta</SelectItem>
@@ -78,7 +86,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New Revenue (Current Month)</CardTitle>
+            <CardTitle className="text-sm font-medium">Ingresos Nuevos (Mes Actual)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -88,7 +96,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Retention Rate (Current Month)</CardTitle>
+            <CardTitle className="text-sm font-medium">Tasa de Retención (Mes Actual)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -98,7 +106,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">NPS (Latest Report Avg.)</CardTitle>
+            <CardTitle className="text-sm font-medium">NPS (Prom. Último Reporte)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -112,34 +120,34 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
           <Card className="col-span-4">
             <CardHeader>
-              <CardTitle>Weekly Revenue vs. Weekly Goal</CardTitle>
+              <CardTitle>Ingresos Semanales vs. Meta Semanal</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
-               <ChartContainer config={{}} className="h-[350px] w-full">
+               <ChartContainer config={chartConfig} className="h-[350px] w-full">
                  <LineChart data={chartRevenueData}>
                    <CartesianGrid vertical={false} />
                    <XAxis dataKey="week" tickLine={false} axisLine={false} tickMargin={8} />
                    <YAxis tickFormatter={(value) => `$${value / 1000000}M`} />
                    <Tooltip content={<ChartTooltipContent />} />
-                   <Line type="monotone" dataKey="revenue" stroke="var(--color-chart-1)" strokeWidth={2} dot={true} />
-                   <Line type="monotone" dataKey="goal" stroke="var(--color-chart-2)" strokeDasharray="5 5" />
+                   <Line type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} dot={true} />
+                   <Line type="monotone" dataKey="goal" stroke="var(--color-goal)" strokeDasharray="5 5" />
                  </LineChart>
                </ChartContainer>
             </CardContent>
           </Card>
           <Card className="col-span-3">
             <CardHeader>
-              <CardTitle>Retention vs. Churn (%)</CardTitle>
+              <CardTitle>Retención vs. Abandono (%)</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={{}} className="h-[350px] w-full">
+              <ChartContainer config={chartConfig} className="h-[350px] w-full">
                 <BarChart data={chartRetentionData}>
                   <CartesianGrid vertical={false} />
                   <XAxis dataKey="week" tickLine={false} axisLine={false} tickMargin={8} />
                   <YAxis unit="%" />
                   <Tooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="retention" fill="var(--color-chart-1)" radius={4} />
-                  <Bar dataKey="churn" fill="var(--color-destructive)" radius={4} />
+                  <Bar dataKey="retention" fill="var(--color-retention)" radius={4} />
+                  <Bar dataKey="churn" fill="var(--color-churn)" radius={4} />
                 </BarChart>
               </ChartContainer>
             </CardContent>
@@ -148,15 +156,15 @@ export default function DashboardPage() {
       ) : (
          <Card>
             <CardHeader>
-              <CardTitle>Cross-Site KPI Comparison</CardTitle>
+              <CardTitle>Comparación de KPIs entre Sedes</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Site</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
-                    <TableHead className="text-right">Retention</TableHead>
+                    <TableHead>Sede</TableHead>
+                    <TableHead className="text-right">Ingresos</TableHead>
+                    <TableHead className="text-right">Retención</TableHead>
                     <TableHead className="text-right">NPS</TableHead>
                   </TableRow>
                 </TableHeader>

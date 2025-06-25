@@ -27,8 +27,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(1, { message: "Password is required." }),
+  email: z.string().email({ message: "Por favor, introduce una dirección de correo electrónico válida." }),
+  password: z.string().min(1, { message: "La contraseña es obligatoria." }),
 });
 
 export default function LoginPage() {
@@ -53,7 +53,7 @@ export default function LoginPage() {
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Login Failed",
+        title: "Fallo de Inicio de Sesión",
         description: error.message,
       });
     } finally {
@@ -65,13 +65,13 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="mb-8 text-center">
         <h1 className="text-4xl font-bold text-primary">VIBRA OS</h1>
-        <p className="text-muted-foreground">Operations & Performance Management</p>
+        <p className="text-muted-foreground">Gestión de Operaciones y Rendimiento</p>
       </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
+          <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
           <CardDescription>
-            Enter your credentials to access your dashboard.
+            Ingresa tus credenciales para acceder a tu panel.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -82,10 +82,10 @@ export default function LoginPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Correo Electrónico</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="user@vibra.fit"
+                        placeholder="usuario@vibra.fit"
                         {...field}
                         disabled={isLoading}
                       />
@@ -99,7 +99,7 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Contraseña</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
@@ -116,7 +116,7 @@ export default function LoginPage() {
                 {isLoading && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Login
+                Ingresar
               </Button>
             </form>
           </Form>

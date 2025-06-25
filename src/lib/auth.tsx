@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('vibra-user', JSON.stringify(foundUser));
           resolve();
         } else {
-          reject(new Error('User not found. Try "ceo@vibra.fit" or "leader.ciudadela@vibra.fit"'));
+          reject(new Error('Usuario no encontrado. Prueba con "ceo@vibra.fit" o "leader.ciudadela@vibra.fit"'));
         }
         setLoading(false);
       }, 1000);

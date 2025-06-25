@@ -38,24 +38,24 @@ const navItems = [
   {
     href: "/",
     icon: AreaChart,
-    label: "Dashboard",
+    label: "Panel Principal",
   },
   {
     href: "/weekly-report",
     icon: FileText,
-    label: "Weekly Report",
+    label: "Reporte Semanal",
     roles: ["SiteLeader"],
   },
   {
     href: "/one-on-one",
     icon: Users,
-    label: "1-on-1 Sessions",
+    label: "Sesiones 1-a-1",
     roles: ["SiteLeader"],
   },
   {
     href: "/local-marketing",
     icon: Megaphone,
-    label: "Local Marketing",
+    label: "Marketing Local",
   },
 ];
 
@@ -136,12 +136,12 @@ export function SidebarNav() {
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+              <span>Configuración</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
+              <span>Cerrar Sesión</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
