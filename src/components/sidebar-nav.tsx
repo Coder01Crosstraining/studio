@@ -50,7 +50,7 @@ const navItems = [
     href: "/one-on-one",
     icon: Users,
     label: "Sesiones 1-a-1",
-    roles: ["SiteLeader"],
+    roles: ["SiteLeader", "CEO"],
   },
   {
     href: "/local-marketing",
@@ -92,7 +92,7 @@ export function SidebarNav() {
       <SidebarContent>
         <SidebarMenu>
           {filteredNavItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
+             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
                 isActive={pathname === item.href}
