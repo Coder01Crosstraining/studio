@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { SiteId } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
 import { Info, Loader2 } from 'lucide-react';
-import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 
 // Mock Data
 const kpiData = {
@@ -52,6 +52,58 @@ const chartConfig = {
   churn: { label: 'Abandono', color: 'hsl(var(--destructive))' },
 };
 
+const colombianHolidays2024 = [
+  '2024-01-01', '2024-01-08', '2024-03-25', '2024-03-28', '2024-03-29',
+  '2024-05-01', '2024-05-13', '2024-06-03', '2024-06-10', '2024-07-01',
+  '2024-07-20', '2024-08-07', '2024-08-19', '2024-10-14', '2024-11-04',
+  '2024-11-11', '2024-12-08', '2024-12-25',
+];
+
+function calculateMonthProgress(today: Date) {
+  const year = today.getFullYear();
+  const month = today.getMonth(); // 0-11
+  
+  const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+  const elapsedDaysInMonth = today.getDate();
+
+  let effectiveBusinessDaysPast = 0;
+  for (let day = 1; day <= elapsedDaysInMonth; day++) {
+    const currentDate = new Date(year, month, day);
+    const dayOfWeek = currentDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const dateString = currentDate.toISOString().split('T')[0];
+
+    if (dayOfWeek === 0) { // Sunday
+      effectiveBusinessDaysPast += 0;
+    } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) { // Holiday or Saturday
+      effectiveBusinessDaysPast += 0.5;
+    } else { // Weekday
+      effectiveBusinessDaysPast += 1;
+    }
+  }
+
+  let effectiveBusinessDaysRemaining = 0;
+  for (let day = elapsedDaysInMonth + 1; day <= totalDaysInMonth; day++) {
+     const currentDate = new Date(year, month, day);
+    const dayOfWeek = currentDate.getDay();
+    const dateString = currentDate.toISOString().split('T')[0];
+    
+    if (dayOfWeek === 0) {
+      effectiveBusinessDaysRemaining += 0;
+    } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) {
+      effectiveBusinessDaysRemaining += 0.5;
+    } else {
+      effectiveBusinessDaysRemaining += 1;
+    }
+  }
+
+  return {
+    totalDaysInMonth,
+    elapsedDaysInMonth,
+    effectiveBusinessDaysPast: Math.max(0.5, effectiveBusinessDaysPast),
+    effectiveBusinessDaysRemaining
+  };
+}
+
 
 export default function DashboardPage() {
   const { user, role } = useAuth();
@@ -71,11 +123,14 @@ export default function DashboardPage() {
           ? Object.keys(kpiData) as SiteId[]
           : [selectedSite];
 
+        const monthProgress = calculateMonthProgress(new Date());
+
         const forecastPromises = sitesToFetch.map(siteId =>
           generateSalesForecast({
             historicalRevenue: weeklyRevenueData[siteId].slice(-4).map(d => d.revenue),
             historicalNewMembers: weeklyNewMembersData[siteId].slice(-4),
             currentMonthRevenue: kpiData[siteId].revenue,
+            ...monthProgress,
           }).catch(err => {
             console.error(`Error fetching forecast for ${siteId}:`, err);
             return null;
@@ -129,6 +184,7 @@ export default function DashboardPage() {
 
 
   return (
+    <TooltipProvider>
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">{dashboardTitle}</h2>
@@ -302,5 +358,6 @@ export default function DashboardPage() {
          </Card>
       )}
     </div>
+    </TooltipProvider>
   );
 }
