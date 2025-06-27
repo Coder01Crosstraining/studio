@@ -7,7 +7,6 @@ import {
   AreaChart,
   FileText,
   Users,
-  Megaphone,
   LogOut,
   Settings,
   History,
@@ -59,11 +58,6 @@ const navItems = [
     icon: Users,
     label: "Sesiones 1-a-1",
     roles: ["SiteLeader", "CEO"],
-  },
-  {
-    href: "/local-marketing",
-    icon: Megaphone,
-    label: "Marketing Local",
   },
   {
     href: "/evidence",

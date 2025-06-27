@@ -49,22 +49,6 @@ export interface OneOnOneSession {
   createdAt: Date;
 }
 
-export type ProposalStatus = "pending" | "approved" | "rejected";
-
-export interface MarketingProposal {
-  id: string;
-  siteId: SiteId;
-  leaderId: string;
-  initiativeName: string;
-  objective: string;
-  proposedAction: string;
-  budget: number;
-  successKPIs: string;
-  status: ProposalStatus;
-  ceoFeedback?: string;
-  submittedAt: Date;
-}
-
 export type EvidenceCategory = "reunion" | "preventiva" | "correctiva";
 
 export interface EvidenceDocument {
