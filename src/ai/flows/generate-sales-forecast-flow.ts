@@ -56,9 +56,11 @@ Datos históricos de días anteriores:
 - Nuevos miembros diarios: {{#each historicalNewMembers}}{{this}}, {{/each}}
 
 Pasos para tu cálculo:
-1. Calcula los ingresos promedio por DÍA COMERCIAL EFECTIVO hasta ahora en el mes (Ingresos acumulados / Días comerciales efectivos transcurridos).
-2. Proyecta los ingresos para el resto del mes multiplicando el ingreso promedio por día comercial efectivo por los días comerciales efectivos restantes.
-3. Suma los ingresos acumulados más los ingresos proyectados para obtener el pronóstico total del mes.
+1.  Calcula los ingresos promedio por DÍA COMERCIAL EFECTIVO.
+    *   Si los "Días comerciales efectivos transcurridos" es mayor que 0, el promedio es: (Ingresos acumulados hasta la fecha / Días comerciales efectivos transcurridos).
+    *   Si los "Días comerciales efectivos transcurridos" es 0, usa el promedio de los ingresos diarios históricos que tienes como el ingreso promedio por DÍA COMERCIAL EFECTIVO.
+2.  Proyecta los ingresos para el resto del mes: (ingreso promedio por DÍA COMERCIAL EFECTIVO * Días comerciales efectivos restantes).
+3.  Calcula el pronóstico total: (Ingresos acumulados hasta la fecha + ingresos proyectados).
 
 Basado en este análisis, calcula un pronóstico de ventas y responde únicamente con el número final y una breve frase explicando tu razonamiento.
 `,

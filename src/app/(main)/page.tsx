@@ -125,7 +125,7 @@ function calculateMonthProgress(today: Date) {
   return {
     totalDaysInMonth,
     elapsedDaysInMonth,
-    effectiveBusinessDaysPast: Math.max(0.5, effectiveBusinessDaysPast),
+    effectiveBusinessDaysPast,
     effectiveBusinessDaysRemaining
   };
 }
