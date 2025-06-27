@@ -130,7 +130,8 @@ function calculateMonthProgress(today: Date) {
   };
 }
 
-const goalSchema = z.object({
+const kpiSchema = z.object({
+  revenue: z.coerce.number().min(0, "Las ventas deben ser un número positivo."),
   monthlyGoal: z.coerce.number().min(0, "La meta debe ser un número positivo."),
 });
 
@@ -150,30 +151,32 @@ export default function DashboardPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<SiteId | null>(null);
 
-  const goalForm = useForm<z.infer<typeof goalSchema>>({
-    resolver: zodResolver(goalSchema),
+  const kpiForm = useForm<z.infer<typeof kpiSchema>>({
+    resolver: zodResolver(kpiSchema),
   });
 
   const handleOpenEditModal = (siteId: SiteId) => {
     setEditingSite(siteId);
-    goalForm.setValue('monthlyGoal', kpiData[siteId].monthlyGoal);
+    kpiForm.setValue('revenue', kpiData[siteId].revenue);
+    kpiForm.setValue('monthlyGoal', kpiData[siteId].monthlyGoal);
     setIsEditModalOpen(true);
   };
 
-  const handleGoalSubmit = (values: z.infer<typeof goalSchema>) => {
+  const handleKpiSubmit = (values: z.infer<typeof kpiSchema>) => {
     if (!editingSite) return;
 
     setKpiData(prev => ({
       ...prev,
       [editingSite]: {
         ...prev[editingSite],
-        monthlyGoal: values.monthlyGoal
+        revenue: values.revenue,
+        monthlyGoal: values.monthlyGoal,
       }
     }));
 
     toast({
       title: 'Éxito',
-      description: `La meta para ${siteNames[editingSite]} ha sido actualizada.`,
+      description: `Los KPIs para ${siteNames[editingSite]} han sido actualizados.`,
     });
     setIsEditModalOpen(false);
     setEditingSite(null);
@@ -447,13 +450,26 @@ export default function DashboardPage() {
      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Editar Meta para {editingSite && siteNames[editingSite]}</DialogTitle>
-          <DialogDescription>Establece la nueva meta de ventas mensual para esta sede.</DialogDescription>
+          <DialogTitle>Editar KPIs para {editingSite && siteNames[editingSite]}</DialogTitle>
+          <DialogDescription>Ajusta las ventas a la fecha y la meta mensual para esta sede.</DialogDescription>
         </DialogHeader>
-        <Form {...goalForm}>
-          <form onSubmit={goalForm.handleSubmit(handleGoalSubmit)} className="space-y-4 py-4">
+        <Form {...kpiForm}>
+          <form onSubmit={kpiForm.handleSubmit(handleKpiSubmit)} className="space-y-4 py-4">
             <FormField
-              control={goalForm.control}
+              control={kpiForm.control}
+              name="revenue"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ventas a la Fecha (COP)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="7500000" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={kpiForm.control}
               name="monthlyGoal"
               render={({ field }) => (
                 <FormItem>
@@ -476,3 +492,4 @@ export default function DashboardPage() {
   );
 }
 
+    
