@@ -15,7 +15,7 @@ export interface Site {
   revenueGoal: number;
 }
 
-export interface WeeklyReport {
+export interface DailyReport {
   id: string;
   siteId: SiteId;
   leaderId: string;
@@ -27,8 +27,8 @@ export interface WeeklyReport {
   renewalRate: number;
   avgNPS: number;
   coachSatisfaction: number;
-  weeklyWin: string;
-  weeklyChallenge: string;
+  dailyWin: string;
+  dailyChallenge: string;
   lessonLearned: string;
   submittedAt: Date;
 }

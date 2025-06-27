@@ -27,8 +27,8 @@ const reportSchema = z.object({
   renewalRate: z.coerce.number().min(0).max(100, "La tasa de renovación debe estar entre 0 y 100."),
   avgNPS: z.coerce.number().min(0).max(10, "El NPS debe estar entre 0 y 10."),
   coachSatisfaction: z.coerce.number().min(0).max(5, "La satisfacción del entrenador debe ser entre 0 y 5."),
-  weeklyWin: z.string().min(10, "El logro semanal debe tener al menos 10 caracteres.").max(500),
-  weeklyChallenge: z.string().min(10, "El desafío semanal debe tener al menos 10 caracteres.").max(500),
+  dailyWin: z.string().min(10, "El logro del día debe tener al menos 10 caracteres.").max(500),
+  dailyChallenge: z.string().min(10, "El desafío del día debe tener al menos 10 caracteres.").max(500),
   lessonLearned: z.string().min(10, "La lección aprendida debe tener al menos 10 caracteres.").max(500),
 });
 
@@ -47,8 +47,8 @@ export default function WeeklyReportPage() {
       renewalRate: undefined,
       avgNPS: undefined,
       coachSatisfaction: undefined,
-      weeklyWin: '',
-      weeklyChallenge: '',
+      dailyWin: '',
+      dailyChallenge: '',
       lessonLearned: '',
     },
   });
@@ -143,10 +143,10 @@ export default function WeeklyReportPage() {
                 )} />
               </div>
 
-              <FormField control={form.control} name="weeklyWin" render={({ field }) => (
+              <FormField control={form.control} name="dailyWin" render={({ field }) => (
                 <FormItem><FormLabel>Logro del Día</FormLabel><FormControl><Textarea placeholder="Alcanzamos la meta de referidos diarios." {...field} /></FormControl><FormMessage /></FormItem>
               )} />
-              <FormField control={form.control} name="weeklyChallenge" render={({ field }) => (
+              <FormField control={form.control} name="dailyChallenge" render={({ field }) => (
                 <FormItem><FormLabel>Desafío del Día</FormLabel><FormControl><Textarea placeholder="Una de las máquinas de cardio requiere mantenimiento." {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="lessonLearned" render={({ field }) => (

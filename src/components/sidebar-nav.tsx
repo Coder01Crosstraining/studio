@@ -10,6 +10,7 @@ import {
   Megaphone,
   LogOut,
   Settings,
+  History,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
@@ -45,6 +46,12 @@ const navItems = [
     icon: FileText,
     label: "Reporte Diario",
     roles: ["SiteLeader"],
+  },
+  {
+    href: "/report-history",
+    icon: History,
+    label: "Historial de Reportes",
+    roles: ["SiteLeader", "CEO"],
   },
   {
     href: "/one-on-one",
