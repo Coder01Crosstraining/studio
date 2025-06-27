@@ -34,33 +34,23 @@ const prompt = ai.definePrompt({
   name: 'generateSalesForecastPrompt',
   input: {schema: GenerateSalesForecastInputSchema},
   output: {schema: GenerateSalesForecastOutputSchema},
-  prompt: `Eres un analista financiero experto para una cadena de gimnasios en Colombia. Tu tarea es proporcionar un pronóstico de ventas para el mes actual, utilizando un enfoque comercial realista basado en los días hábiles.
+  prompt: `Eres un analista financiero experto para una cadena de gimnasios en Colombia. Tu tarea es proporcionar un pronóstico de ventas para el mes actual basado en la fórmula que te proporciono.
 
-Analiza los datos históricos de ventas y el progreso actual para proyectar las ventas totales del mes. Basa tu pronóstico EXCLUSIVAMENTE en los ingresos por ventas y no en otras métricas como el ticket promedio o el número de miembros.
-
-Reglas comerciales para el pronóstico:
-- Los domingos no se generan ventas (0 días comerciales).
-- Los sábados y días festivos se genera la mitad de las ventas de un día normal (0.5 días comerciales).
-- Los lunes a viernes (no festivos) son días comerciales completos (1 día comercial).
+Analiza los datos de ventas y el progreso actual para proyectar las ventas totales del mes. Basa tu pronóstico EXCLUSIVAMENTE en los ingresos por ventas.
 
 Contexto del mes actual:
-- Días totales del mes: {{totalDaysInMonth}}
-- Días transcurridos: {{elapsedDaysInMonth}}
-- Días comerciales efectivos transcurridos: {{effectiveBusinessDaysPast}}
-- Días comerciales efectivos restantes: {{effectiveBusinessDaysRemaining}}
+- Días transcurridos en el mes: {{elapsedDaysInMonth}}
+- Días comerciales efectivos restantes en el mes: {{effectiveBusinessDaysRemaining}}
 - Ventas acumuladas hasta la fecha: COP {{currentMonthRevenue}}
+- Datos históricos de días anteriores (solo para referencia si aún no han pasado días): {{#each historicalRevenue}}COP {{this}}, {{/each}}
 
-Datos históricos de días anteriores:
-- Ventas diarias históricas: {{#each historicalRevenue}}COP {{this}}, {{/each}}
+Sigue estos pasos EXACTOS para tu cálculo:
+1.  Calcula el promedio de ventas por DÍA CALENDARIO transcurrido. La fórmula es: (Ventas acumuladas hasta la fecha / Días transcurridos en el mes).
+    *   Si "Días transcurridos en el mes" es 0, usa el promedio de los datos históricos como el promedio de ventas diario.
+2.  Proyecta las ventas para el resto del mes. La fórmula es: (promedio de ventas por DÍA CALENDARIO * Días comerciales efectivos restantes).
+3.  Calcula el pronóstico total del mes. La fórmula es: (Ventas acumuladas hasta la fecha + ventas proyectadas).
 
-Pasos para tu cálculo:
-1.  Calcula las ventas promedio por DÍA COMERCIAL EFECTIVO.
-    *   Si los "Días comerciales efectivos transcurridos" es mayor que 0, el promedio es: (Ventas acumuladas hasta la fecha / Días comerciales efectivos transcurridos).
-    *   Si los "Días comerciales efectivos transcurridos" es 0, usa el promedio de las ventas diarias históricas que tienes como la venta promedio por DÍA COMERCIAL EFECTIVO.
-2.  Proyecta las ventas para el resto del mes: (venta promedio por DÍA COMERCIAL EFECTIVO * Días comerciales efectivos restantes).
-3.  Calcula el pronóstico total: (Ventas acumuladas hasta la fecha + ventas proyectadas).
-
-Basado en este análisis, calcula un pronóstico de ventas y responde únicamente con el número final y una breve frase explicando tu razonamiento.
+Basado en este cálculo, responde únicamente con el número final del pronóstico y una breve frase explicando tu razonamiento (ej: "Calculado en base al promedio diario y los días comerciales restantes.").
 `,
 });
 
