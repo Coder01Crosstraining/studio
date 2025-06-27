@@ -12,6 +12,8 @@ import type { SiteId } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
 import { Info, Loader2 } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { subDays, format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 // Mock Data
 const kpiData = {
@@ -20,24 +22,40 @@ const kpiData = {
   piedecuesta: { revenue: 6200000, retention: 95, nps: 9.1, averageTicket: 148000, monthlyGoal: 20000000 },
 };
 
-const weeklyRevenueData = {
-  ciudadela: Array.from({ length: 8 }, (_, i) => ({ week: `S${i + 1}`, revenue: Math.floor(Math.random() * (2000000 - 1000000 + 1) + 1000000), goal: 1875000 })),
-  floridablanca: Array.from({ length: 8 }, (_, i) => ({ week: `S${i + 1}`, revenue: Math.floor(Math.random() * (2800000 - 1500000 + 1) + 1500000), goal: 2450000 })),
-  piedecuesta: Array.from({ length: 8 }, (_, i) => ({ week: `S${i + 1}`, revenue: Math.floor(Math.random() * (1800000 - 800000 + 1) + 800000), goal: 1550000 })),
+const generateDailyRevenueData = (baseRevenue: number, baseGoal: number) => {
+    return Array.from({ length: 14 }, (_, i) => {
+        const date = subDays(new Date(), 13 - i);
+        return {
+            date: format(date, 'MMM d', { locale: es }),
+            revenue: Math.floor(baseRevenue + (Math.random() - 0.5) * baseRevenue * 0.4),
+            goal: Math.floor(baseGoal),
+        };
+    });
 };
 
-const weeklyNewMembersData: Record<SiteId, number[]> = {
-    ciudadela: Array.from({ length: 8 }, () => Math.floor(Math.random() * (15 - 5 + 1) + 5)),
-    floridablanca: Array.from({ length: 8 }, () => Math.floor(Math.random() * (20 - 8 + 1) + 8)),
-    piedecuesta: Array.from({ length: 8 }, () => Math.floor(Math.random() * (12 - 4 + 1) + 4)),
+const dailyRevenueData = {
+  ciudadela: generateDailyRevenueData(350000, 833000),
+  floridablanca: generateDailyRevenueData(480000, 1000000),
+  piedecuesta: generateDailyRevenueData(290000, 667000),
 };
 
-const retentionChurnData = {
-  ciudadela: Array.from({ length: 4 }, (_, i) => ({ week: `S${i + 1}`, retention: 92 + (Math.random() * 4 - 2), churn: 8 - (Math.random() * 4 - 2) })),
-  floridablanca: Array.from({ length: 4 }, (_, i) => ({ week: `S${i + 1}`, retention: 88 + (Math.random() * 4 - 2), churn: 12 - (Math.random() * 4 - 2) })),
-  piedecuesta: Array.from({ length: 4 }, (_, i) => ({ week: `S${i + 1}`, retention: 95 + (Math.random() * 4 - 2), churn: 5 - (Math.random() * 4 - 2) })),
+
+const generateDailyMembersData = (baseNew: number, baseLost: number) => {
+    return Array.from({ length: 14 }, (_, i) => {
+        const date = subDays(new Date(), 13 - i);
+        return {
+            date: format(date, 'MMM d', { locale: es }),
+            new: Math.max(0, Math.floor(baseNew + (Math.random() - 0.4) * baseNew * 0.8)),
+            lost: Math.max(0, Math.floor(baseLost + (Math.random() - 0.5) * baseLost * 0.9)),
+        };
+    });
 };
 
+const dailyMembersData = {
+  ciudadela: generateDailyMembersData(3, 1),
+  floridablanca: generateDailyMembersData(4, 2),
+  piedecuesta: generateDailyMembersData(2, 1),
+};
 
 const siteNames: Record<SiteId, string> = {
   ciudadela: "VIBRA Ciudadela",
@@ -48,8 +66,8 @@ const siteNames: Record<SiteId, string> = {
 const chartConfig = {
   revenue: { label: 'Ingresos', color: 'hsl(var(--chart-1))' },
   goal: { label: 'Meta', color: 'hsl(var(--chart-2))' },
-  retention: { label: 'Retención', color: 'hsl(var(--chart-1))' },
-  churn: { label: 'Abandono', color: 'hsl(var(--destructive))' },
+  new: { label: 'Nuevos Miembros', color: 'hsl(var(--chart-1))' },
+  lost: { label: 'Miembros Perdidos', color: 'hsl(var(--destructive))' },
 };
 
 const colombianHolidays2024 = [
@@ -127,8 +145,8 @@ export default function DashboardPage() {
 
         const forecastPromises = sitesToFetch.map(siteId =>
           generateSalesForecast({
-            historicalRevenue: weeklyRevenueData[siteId].slice(-4).map(d => d.revenue),
-            historicalNewMembers: weeklyNewMembersData[siteId].slice(-4),
+            historicalRevenue: dailyRevenueData[siteId].slice(-7).map(d => d.revenue),
+            historicalNewMembers: dailyMembersData[siteId].slice(-7).map(d => d.new),
             currentMonthRevenue: kpiData[siteId].revenue,
             ...monthProgress,
           }).catch(err => {
@@ -175,8 +193,8 @@ export default function DashboardPage() {
     return { revenue: totalRevenue, retention: avgRetention, nps: avgNps, averageTicket: avgTicket, salesForecast: totalForecast, monthlyGoal: totalMonthlyGoal };
   }, [forecasts]);
 
-  const chartRevenueData = selectedSite !== 'global' ? weeklyRevenueData[selectedSite] : [];
-  const chartRetentionData = selectedSite !== 'global' ? retentionChurnData[selectedSite] : [];
+  const chartRevenueData = selectedSite !== 'global' ? dailyRevenueData[selectedSite] : [];
+  const chartMembersData = selectedSite !== 'global' ? dailyMembersData[selectedSite] : [];
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 
@@ -286,15 +304,17 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
           <Card className="col-span-4">
             <CardHeader>
-              <CardTitle>Ingresos Semanales vs. Meta Semanal</CardTitle>
+              <CardTitle>Ventas Diarias vs. Meta (Últimos 14 Días)</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
                <ChartContainer config={chartConfig} className="h-[350px] w-full">
                  <LineChart data={chartRevenueData}>
                    <CartesianGrid vertical={false} />
-                   <XAxis dataKey="week" tickLine={false} axisLine={false} tickMargin={8} />
-                   <YAxis tickFormatter={(value) => `$${value / 1000000}M`} />
-                   <Tooltip content={<ChartTooltipContent />} />
+                   <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
+                   <YAxis tickFormatter={(value) => `$${value / 1000}k`} />
+                   <Tooltip content={<ChartTooltipContent formatter={(value, name) => {
+                        return [formatCurrency(value as number), name === 'revenue' ? 'Ingresos' : 'Meta'];
+                   }} />} />
                    <Line type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} dot={true} />
                    <Line type="monotone" dataKey="goal" stroke="var(--color-goal)" strokeDasharray="5 5" />
                  </LineChart>
@@ -303,17 +323,17 @@ export default function DashboardPage() {
           </Card>
           <Card className="col-span-3">
             <CardHeader>
-              <CardTitle>Retención vs. Abandono (%)</CardTitle>
+              <CardTitle>Nuevos Miembros vs. Miembros Perdidos (Últimos 14 Días)</CardTitle>
             </CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[350px] w-full">
-                <BarChart data={chartRetentionData}>
+                <BarChart data={chartMembersData}>
                   <CartesianGrid vertical={false} />
-                  <XAxis dataKey="week" tickLine={false} axisLine={false} tickMargin={8} />
-                  <YAxis unit="%" />
+                  <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} />
+                  <YAxis />
                   <Tooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="retention" fill="var(--color-retention)" radius={4} />
-                  <Bar dataKey="churn" fill="var(--color-churn)" radius={4} />
+                  <Bar dataKey="new" fill="var(--color-new)" radius={4} />
+                  <Bar dataKey="lost" fill="var(--color-lost)" radius={4} />
                 </BarChart>
               </ChartContainer>
             </CardContent>

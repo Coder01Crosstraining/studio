@@ -41,6 +41,12 @@ export default function WeeklyReportPage() {
   const form = useForm<z.infer<typeof reportSchema>>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
+      newRevenue: undefined,
+      newMembers: undefined,
+      lostMembers: undefined,
+      renewalRate: undefined,
+      avgNPS: undefined,
+      coachSatisfaction: undefined,
       weeklyWin: '',
       weeklyChallenge: '',
       lessonLearned: '',
@@ -62,7 +68,7 @@ export default function WeeklyReportPage() {
 
     toast({
       title: "¡Éxito!",
-      description: "Tu reporte semanal ha sido enviado.",
+      description: "Tu reporte diario ha sido enviado.",
     });
     router.push('/');
     setIsLoading(false);
@@ -70,11 +76,11 @@ export default function WeeklyReportPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-       <h2 className="text-3xl font-bold tracking-tight">Enviar Reporte Semanal</h2>
+       <h2 className="text-3xl font-bold tracking-tight">Enviar Reporte Diario</h2>
       <Card>
         <CardHeader>
           <CardTitle>Nuevo Reporte</CardTitle>
-          <CardDescription>Completa los detalles del reporte de rendimiento de esta semana.</CardDescription>
+          <CardDescription>Completa los detalles del reporte de rendimiento de hoy.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -84,7 +90,7 @@ export default function WeeklyReportPage() {
                 name="date"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Fecha de Inicio de Semana del Reporte</FormLabel>
+                    <FormLabel>Fecha del Reporte</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -118,7 +124,7 @@ export default function WeeklyReportPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 <FormField control={form.control} name="newRevenue" render={({ field }) => (
-                  <FormItem><FormLabel>Nuevos Ingresos (COP)</FormLabel><FormControl><Input type="number" placeholder="1500000" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Ventas del Día (COP)</FormLabel><FormControl><Input type="number" placeholder="1500000" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="newMembers" render={({ field }) => (
                   <FormItem><FormLabel>Nuevos Miembros</FormLabel><FormControl><Input type="number" placeholder="10" {...field} /></FormControl><FormMessage /></FormItem>
@@ -138,13 +144,13 @@ export default function WeeklyReportPage() {
               </div>
 
               <FormField control={form.control} name="weeklyWin" render={({ field }) => (
-                <FormItem><FormLabel>Logro de la Semana</FormLabel><FormControl><Textarea placeholder="Alcanzamos nuestra meta de ventas 2 días antes." {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Logro del Día</FormLabel><FormControl><Textarea placeholder="Alcanzamos la meta de referidos diarios." {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="weeklyChallenge" render={({ field }) => (
-                <FormItem><FormLabel>Desafío de la Semana</FormLabel><FormControl><Textarea placeholder="El entrenador 'X' reportó bajos niveles de energía." {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Desafío del Día</FormLabel><FormControl><Textarea placeholder="Una de las máquinas de cardio requiere mantenimiento." {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="lessonLearned" render={({ field }) => (
-                <FormItem><FormLabel>Lección Aprendida</FormLabel><FormControl><Textarea placeholder="Los prospectos de la alianza 'Y' tienen la tasa de cierre más alta." {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Lección Aprendida del Día</FormLabel><FormControl><Textarea placeholder="La campaña de 'trae un amigo' está funcionando muy bien en la tarde." {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               
               <Button type="submit" disabled={isLoading}>

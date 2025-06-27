@@ -11,8 +11,8 @@ import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 
 const GenerateSalesForecastInputSchema = z.object({
-  historicalRevenue: z.array(z.number()).describe('An array of the last few weeks of revenue, in COP.'),
-  historicalNewMembers: z.array(z.number()).describe('An array of the last few weeks of new member counts.'),
+  historicalRevenue: z.array(z.number()).describe('An array of the last few days of revenue, in COP.'),
+  historicalNewMembers: z.array(z.number()).describe('An array of the last few days of new member counts.'),
   currentMonthRevenue: z.number().describe('The revenue accumulated so far in the current month, in COP.'),
   totalDaysInMonth: z.number().describe('The total number of days in the current month.'),
   elapsedDaysInMonth: z.number().describe('The number of days that have already passed in the current month.'),
@@ -51,9 +51,9 @@ Contexto del mes actual:
 - Días comerciales efectivos restantes: {{effectiveBusinessDaysRemaining}}
 - Ingresos acumulados hasta la fecha: COP {{currentMonthRevenue}}
 
-Datos históricos de semanas anteriores:
-- Ingresos semanales: {{#each historicalRevenue}}COP {{this}}, {{/each}}
-- Nuevos miembros semanales: {{#each historicalNewMembers}}{{this}}, {{/each}}
+Datos históricos de días anteriores:
+- Ingresos diarios: {{#each historicalRevenue}}COP {{this}}, {{/each}}
+- Nuevos miembros diarios: {{#each historicalNewMembers}}{{this}}, {{/each}}
 
 Pasos para tu cálculo:
 1. Calcula los ingresos promedio por DÍA COMERCIAL EFECTIVO hasta ahora en el mes (Ingresos acumulados / Días comerciales efectivos transcurridos).

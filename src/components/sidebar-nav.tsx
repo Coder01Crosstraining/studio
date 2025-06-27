@@ -43,7 +43,7 @@ const navItems = [
   {
     href: "/weekly-report",
     icon: FileText,
-    label: "Reporte Semanal",
+    label: "Reporte Diario",
     roles: ["SiteLeader"],
   },
   {
