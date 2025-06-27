@@ -15,9 +15,9 @@ import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigge
 
 // Mock Data
 const kpiData = {
-  ciudadela: { revenue: 7500000, retention: 92, nps: 8.8, averageTicket: 155000 },
-  floridablanca: { revenue: 9800000, retention: 88, nps: 8.2, averageTicket: 162000 },
-  piedecuesta: { revenue: 6200000, retention: 95, nps: 9.1, averageTicket: 148000 },
+  ciudadela: { revenue: 7500000, retention: 92, nps: 8.8, averageTicket: 155000, monthlyGoal: 25000000 },
+  floridablanca: { revenue: 9800000, retention: 88, nps: 8.2, averageTicket: 162000, monthlyGoal: 30000000 },
+  piedecuesta: { revenue: 6200000, retention: 95, nps: 9.1, averageTicket: 148000, monthlyGoal: 20000000 },
 };
 
 const weeklyRevenueData = {
@@ -171,7 +171,8 @@ export default function DashboardPage() {
     const avgNps = Object.values(kpiData).reduce((sum, site) => sum + site.nps, 0) / 3;
     const avgTicket = Object.values(kpiData).reduce((sum, site) => sum + site.averageTicket, 0) / 3;
     const totalForecast = Object.values(forecasts).reduce((sum, site) => sum + (site?.forecast || 0), 0);
-    return { revenue: totalRevenue, retention: avgRetention, nps: avgNps, averageTicket: avgTicket, salesForecast: totalForecast };
+    const totalMonthlyGoal = Object.values(kpiData).reduce((sum, site) => sum + site.monthlyGoal, 0);
+    return { revenue: totalRevenue, retention: avgRetention, nps: avgNps, averageTicket: avgTicket, salesForecast: totalForecast, monthlyGoal: totalMonthlyGoal };
   }, [forecasts]);
 
   const chartRevenueData = selectedSite !== 'global' ? weeklyRevenueData[selectedSite] : [];
@@ -203,10 +204,10 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ingresos Nuevos (Mes)</CardTitle>
+            <CardTitle className="text-sm font-medium">Ventas a la Fecha</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -216,11 +217,11 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ticket Promedio</CardTitle>
+            <CardTitle className="text-sm font-medium">Meta del Mes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(selectedSite === 'global' ? globalSummary.averageTicket : currentKpis!.averageTicket)}
+              {formatCurrency(selectedSite === 'global' ? globalSummary.monthlyGoal : (currentKpis ? currentKpis.monthlyGoal : 0))}
             </div>
           </CardContent>
         </Card>
@@ -247,6 +248,16 @@ export default function DashboardPage() {
                     {formatCurrency(selectedSite === 'global' ? globalSummary.salesForecast : currentForecast?.forecast || 0)}
                 </div>
             )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ticket Promedio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(selectedSite === 'global' ? globalSummary.averageTicket : currentKpis!.averageTicket)}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -318,9 +329,10 @@ export default function DashboardPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Sede</TableHead>
-                    <TableHead className="text-right">Ingresos</TableHead>
-                    <TableHead className="text-right">Ticket Promedio</TableHead>
+                    <TableHead className="text-right">Ventas a la Fecha</TableHead>
+                    <TableHead className="text-right">Meta del Mes</TableHead>
                     <TableHead className="text-right">Pronóstico Ventas</TableHead>
+                    <TableHead className="text-right">Ticket Promedio</TableHead>
                     <TableHead className="text-right">Retención</TableHead>
                     <TableHead className="text-right">NPS</TableHead>
                   </TableRow>
@@ -330,7 +342,7 @@ export default function DashboardPage() {
                     <TableRow key={siteId}>
                       <TableCell className="font-medium">{siteNames[siteId as SiteId]}</TableCell>
                       <TableCell className="text-right">{formatCurrency(data.revenue)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(data.averageTicket)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(data.monthlyGoal)}</TableCell>
                       <TableCell className="text-right">
                         {isForecastLoading && !forecasts[siteId as SiteId] ? (
                             <div className="flex justify-end"><Loader2 className="h-4 w-4 animate-spin" /></div>
@@ -348,6 +360,7 @@ export default function DashboardPage() {
                           </div>
                         )}
                       </TableCell>
+                      <TableCell className="text-right">{formatCurrency(data.averageTicket)}</TableCell>
                       <TableCell className="text-right">{data.retention.toFixed(1)}%</TableCell>
                       <TableCell className="text-right">{data.nps.toFixed(1)}</TableCell>
                     </TableRow>
