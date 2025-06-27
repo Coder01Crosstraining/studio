@@ -11,13 +11,12 @@ import {ai} from '@/ai/genkit';
 import {z} from 'zod';
 
 const GenerateSalesForecastInputSchema = z.object({
-  historicalRevenue: z.array(z.number()).describe('An array of the last few days of revenue, in COP.'),
-  historicalNewMembers: z.array(z.number()).describe('An array of the last few days of new member counts.'),
-  currentMonthRevenue: z.number().describe('The revenue accumulated so far in the current month, in COP.'),
-  totalDaysInMonth: z.number().describe('The total number of days in the current month.'),
-  elapsedDaysInMonth: z.number().describe('The number of days that have already passed in the current month.'),
-  effectiveBusinessDaysPast: z.number().describe('The number of effective business days that have passed (L-V=1, Sáb/Festivo=0.5, Dom=0).'),
-  effectiveBusinessDaysRemaining: z.number().describe('The number of effective business days remaining in the month (L-V=1, Sáb/Festivo=0.5, Dom=0).'),
+  historicalRevenue: z.array(z.number()).describe('Un arreglo con los ingresos de los últimos días, en COP.'),
+  currentMonthRevenue: z.number().describe('Los ingresos acumulados hasta ahora en el mes actual, en COP.'),
+  totalDaysInMonth: z.number().describe('El número total de días en el mes actual.'),
+  elapsedDaysInMonth: z.number().describe('El número de días que ya han pasado en el mes actual.'),
+  effectiveBusinessDaysPast: z.number().describe('El número de días comerciales efectivos que han pasado (L-V=1, Sáb/Festivo=0.5, Dom=0).'),
+  effectiveBusinessDaysRemaining: z.number().describe('El número de días comerciales efectivos restantes en el mes (L-V=1, Sáb/Festivo=0.5, Dom=0).'),
 });
 export type GenerateSalesForecastInput = z.infer<typeof GenerateSalesForecastInputSchema>;
 
@@ -37,7 +36,7 @@ const prompt = ai.definePrompt({
   output: {schema: GenerateSalesForecastOutputSchema},
   prompt: `Eres un analista financiero experto para una cadena de gimnasios en Colombia. Tu tarea es proporcionar un pronóstico de ventas para el mes actual, utilizando un enfoque comercial realista basado en los días hábiles.
 
-Analiza los datos históricos y el progreso actual para proyectar las ventas totales del mes.
+Analiza los datos históricos de ventas y el progreso actual para proyectar las ventas totales del mes. Basa tu pronóstico EXCLUSIVAMENTE en los ingresos por ventas y no en otras métricas como el ticket promedio o el número de miembros.
 
 Reglas comerciales para el pronóstico:
 - Los domingos no se generan ventas (0 días comerciales).
@@ -49,18 +48,17 @@ Contexto del mes actual:
 - Días transcurridos: {{elapsedDaysInMonth}}
 - Días comerciales efectivos transcurridos: {{effectiveBusinessDaysPast}}
 - Días comerciales efectivos restantes: {{effectiveBusinessDaysRemaining}}
-- Ingresos acumulados hasta la fecha: COP {{currentMonthRevenue}}
+- Ventas acumuladas hasta la fecha: COP {{currentMonthRevenue}}
 
 Datos históricos de días anteriores:
-- Ingresos diarios: {{#each historicalRevenue}}COP {{this}}, {{/each}}
-- Nuevos miembros diarios: {{#each historicalNewMembers}}{{this}}, {{/each}}
+- Ventas diarias históricas: {{#each historicalRevenue}}COP {{this}}, {{/each}}
 
 Pasos para tu cálculo:
-1.  Calcula los ingresos promedio por DÍA COMERCIAL EFECTIVO.
-    *   Si los "Días comerciales efectivos transcurridos" es mayor que 0, el promedio es: (Ingresos acumulados hasta la fecha / Días comerciales efectivos transcurridos).
-    *   Si los "Días comerciales efectivos transcurridos" es 0, usa el promedio de los ingresos diarios históricos que tienes como el ingreso promedio por DÍA COMERCIAL EFECTIVO.
-2.  Proyecta los ingresos para el resto del mes: (ingreso promedio por DÍA COMERCIAL EFECTIVO * Días comerciales efectivos restantes).
-3.  Calcula el pronóstico total: (Ingresos acumulados hasta la fecha + ingresos proyectados).
+1.  Calcula las ventas promedio por DÍA COMERCIAL EFECTIVO.
+    *   Si los "Días comerciales efectivos transcurridos" es mayor que 0, el promedio es: (Ventas acumuladas hasta la fecha / Días comerciales efectivos transcurridos).
+    *   Si los "Días comerciales efectivos transcurridos" es 0, usa el promedio de las ventas diarias históricas que tienes como la venta promedio por DÍA COMERCIAL EFECTIVO.
+2.  Proyecta las ventas para el resto del mes: (venta promedio por DÍA COMERCIAL EFECTIVO * Días comerciales efectivos restantes).
+3.  Calcula el pronóstico total: (Ventas acumuladas hasta la fecha + ventas proyectadas).
 
 Basado en este análisis, calcula un pronóstico de ventas y responde únicamente con el número final y una breve frase explicando tu razonamiento.
 `,

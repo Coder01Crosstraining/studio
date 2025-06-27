@@ -196,7 +196,6 @@ export default function DashboardPage() {
         const forecastPromises = sitesToFetch.map(siteId =>
           generateSalesForecast({
             historicalRevenue: dailyRevenueData[siteId].slice(-7).map(d => d.revenue),
-            historicalNewMembers: dailyMembersData[siteId].slice(-7).map(d => d.new),
             currentMonthRevenue: kpiData[siteId].revenue,
             ...monthProgress,
           }).catch(err => {
