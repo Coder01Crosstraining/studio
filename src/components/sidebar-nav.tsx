@@ -11,6 +11,7 @@ import {
   LogOut,
   Settings,
   History,
+  FolderKanban,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
@@ -63,6 +64,12 @@ const navItems = [
     href: "/local-marketing",
     icon: Megaphone,
     label: "Marketing Local",
+  },
+  {
+    href: "/evidence",
+    icon: FolderKanban,
+    label: "Gestión Documental",
+    roles: ["SiteLeader", "CEO"],
   },
 ];
 

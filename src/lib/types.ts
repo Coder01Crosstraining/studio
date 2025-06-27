@@ -64,3 +64,18 @@ export interface MarketingProposal {
   ceoFeedback?: string;
   submittedAt: Date;
 }
+
+export type EvidenceCategory = "reunion" | "preventiva" | "correctiva";
+
+export interface EvidenceDocument {
+  id: string;
+  siteId: SiteId;
+  leaderId: string;
+  title: string;
+  description: string;
+  fileUrl: string; // Will be a placeholder URL
+  fileName: string;
+  fileType: "image" | "pdf";
+  category: EvidenceCategory;
+  uploadedAt: Date;
+}
