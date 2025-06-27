@@ -25,9 +25,9 @@ import { useToast } from '@/hooks/use-toast';
 
 // Mock Data
 const initialKpiData = {
-  ciudadela: { revenue: 7500000, retention: 92, nps: 8.8, averageTicket: 155000, monthlyGoal: 25000000 },
-  floridablanca: { revenue: 9800000, retention: 88, nps: 8.2, averageTicket: 162000, monthlyGoal: 30000000 },
-  piedecuesta: { revenue: 6200000, retention: 95, nps: 9.1, averageTicket: 148000, monthlyGoal: 20000000 },
+  ciudadela: { revenue: 16693000, retention: 92, nps: 8.8, averageTicket: 155000, monthlyGoal: 25000000 },
+  floridablanca: { revenue: 29086200, retention: 88, nps: 8.2, averageTicket: 162000, monthlyGoal: 30000000 },
+  piedecuesta: { revenue: 26779100, retention: 95, nps: 9.1, averageTicket: 148000, monthlyGoal: 20000000 },
 };
 
 const generateDailyRevenueData = (baseRevenue: number, baseGoal: number) => {
@@ -42,9 +42,9 @@ const generateDailyRevenueData = (baseRevenue: number, baseGoal: number) => {
 };
 
 const dailyRevenueData = {
-  ciudadela: generateDailyRevenueData(350000, 833000),
-  floridablanca: generateDailyRevenueData(480000, 1000000),
-  piedecuesta: generateDailyRevenueData(290000, 667000),
+  ciudadela: generateDailyRevenueData(830000, 833000),
+  floridablanca: generateDailyRevenueData(1450000, 1000000),
+  piedecuesta: generateDailyRevenueData(1330000, 667000),
 };
 
 
@@ -490,5 +490,3 @@ export default function DashboardPage() {
     </TooltipProvider>
   );
 }
-
-    
