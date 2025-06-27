@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -11,9 +12,9 @@ import type { SiteId } from '@/lib/types';
 
 // Mock Data
 const kpiData = {
-  ciudadela: { revenue: 7500000, retention: 92, nps: 8.8 },
-  floridablanca: { revenue: 9800000, retention: 88, nps: 8.2 },
-  piedecuesta: { revenue: 6200000, retention: 95, nps: 9.1 },
+  ciudadela: { revenue: 7500000, retention: 92, nps: 8.8, averageTicket: 155000, salesForecast: 8500000 },
+  floridablanca: { revenue: 9800000, retention: 88, nps: 8.2, averageTicket: 162000, salesForecast: 11000000 },
+  piedecuesta: { revenue: 6200000, retention: 95, nps: 9.1, averageTicket: 148000, salesForecast: 7000000 },
 };
 
 const weeklyRevenueData = {
@@ -58,11 +59,15 @@ export default function DashboardPage() {
     const totalRevenue = Object.values(kpiData).reduce((sum, site) => sum + site.revenue, 0);
     const avgRetention = Object.values(kpiData).reduce((sum, site) => sum + site.retention, 0) / 3;
     const avgNps = Object.values(kpiData).reduce((sum, site) => sum + site.nps, 0) / 3;
-    return { revenue: totalRevenue, retention: avgRetention, nps: avgNps };
+    const avgTicket = Object.values(kpiData).reduce((sum, site) => sum + site.averageTicket, 0) / 3;
+    const totalForecast = Object.values(kpiData).reduce((sum, site) => sum + site.salesForecast, 0);
+    return { revenue: totalRevenue, retention: avgRetention, nps: avgNps, averageTicket: avgTicket, salesForecast: totalForecast };
   }, []);
 
   const chartRevenueData = selectedSite !== 'global' ? weeklyRevenueData[selectedSite] : [];
   const chartRetentionData = selectedSite !== 'global' ? retentionChurnData[selectedSite] : [];
+
+  const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -83,20 +88,40 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ingresos Nuevos (Mes Actual)</CardTitle>
+            <CardTitle className="text-sm font-medium">Ingresos Nuevos (Mes)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(selectedSite === 'global' ? globalSummary.revenue : currentKpis!.revenue)}
+              {formatCurrency(selectedSite === 'global' ? globalSummary.revenue : currentKpis!.revenue)}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tasa de Retención (Mes Actual)</CardTitle>
+            <CardTitle className="text-sm font-medium">Ticket Promedio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(selectedSite === 'global' ? globalSummary.averageTicket : currentKpis!.averageTicket)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pronóstico Ventas (Mes)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(selectedSite === 'global' ? globalSummary.salesForecast : currentKpis!.salesForecast)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tasa de Retención (Mes)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -106,7 +131,7 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">NPS (Prom. Último Reporte)</CardTitle>
+            <CardTitle className="text-sm font-medium">NPS (Promedio)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -164,6 +189,8 @@ export default function DashboardPage() {
                   <TableRow>
                     <TableHead>Sede</TableHead>
                     <TableHead className="text-right">Ingresos</TableHead>
+                    <TableHead className="text-right">Ticket Promedio</TableHead>
+                    <TableHead className="text-right">Pronóstico Ventas</TableHead>
                     <TableHead className="text-right">Retención</TableHead>
                     <TableHead className="text-right">NPS</TableHead>
                   </TableRow>
@@ -172,7 +199,9 @@ export default function DashboardPage() {
                   {Object.entries(kpiData).map(([siteId, data]) => (
                     <TableRow key={siteId}>
                       <TableCell className="font-medium">{siteNames[siteId as SiteId]}</TableCell>
-                      <TableCell className="text-right">{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(data.revenue)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(data.revenue)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(data.averageTicket)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(data.salesForecast)}</TableCell>
                       <TableCell className="text-right">{data.retention.toFixed(1)}%</TableCell>
                       <TableCell className="text-right">{data.nps.toFixed(1)}</TableCell>
                     </TableRow>
@@ -185,3 +214,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
