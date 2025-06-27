@@ -10,13 +10,21 @@ import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { SiteId } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
-import { Info, Loader2 } from 'lucide-react';
+import { Info, Loader2, Pencil } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { subDays, format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock Data
-const kpiData = {
+const initialKpiData = {
   ciudadela: { revenue: 7500000, retention: 92, nps: 8.8, averageTicket: 155000, monthlyGoal: 25000000 },
   floridablanca: { revenue: 9800000, retention: 88, nps: 8.2, averageTicket: 162000, monthlyGoal: 30000000 },
   piedecuesta: { revenue: 6200000, retention: 95, nps: 9.1, averageTicket: 148000, monthlyGoal: 20000000 },
@@ -122,16 +130,55 @@ function calculateMonthProgress(today: Date) {
   };
 }
 
+const goalSchema = z.object({
+  monthlyGoal: z.coerce.number().min(0, "La meta debe ser un número positivo."),
+});
+
 
 export default function DashboardPage() {
   const { user, role } = useAuth();
   const [selectedSite, setSelectedSite] = useState<SiteId | 'global'>(role === 'CEO' ? 'global' : user?.siteId!);
+  const [kpiData, setKpiData] = useState(initialKpiData);
   const [forecasts, setForecasts] = useState<Record<SiteId, GenerateSalesForecastOutput | null>>({
     ciudadela: null,
     floridablanca: null,
     piedecuesta: null,
   });
   const [isForecastLoading, setIsForecastLoading] = useState(true);
+
+  const { toast } = useToast();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSite, setEditingSite] = useState<SiteId | null>(null);
+
+  const goalForm = useForm<z.infer<typeof goalSchema>>({
+    resolver: zodResolver(goalSchema),
+  });
+
+  const handleOpenEditModal = (siteId: SiteId) => {
+    setEditingSite(siteId);
+    goalForm.setValue('monthlyGoal', kpiData[siteId].monthlyGoal);
+    setIsEditModalOpen(true);
+  };
+
+  const handleGoalSubmit = (values: z.infer<typeof goalSchema>) => {
+    if (!editingSite) return;
+
+    setKpiData(prev => ({
+      ...prev,
+      [editingSite]: {
+        ...prev[editingSite],
+        monthlyGoal: values.monthlyGoal
+      }
+    }));
+
+    toast({
+      title: 'Éxito',
+      description: `La meta para ${siteNames[editingSite]} ha sido actualizada.`,
+    });
+    setIsEditModalOpen(false);
+    setEditingSite(null);
+  };
+
 
   useEffect(() => {
     async function fetchForecasts() {
@@ -173,7 +220,7 @@ export default function DashboardPage() {
       }
     }
     fetchForecasts();
-  }, [selectedSite]);
+  }, [selectedSite, kpiData]);
 
   const dashboardTitle = useMemo(() => {
     if (selectedSite === 'global') return "Panel Global";
@@ -191,7 +238,7 @@ export default function DashboardPage() {
     const totalForecast = Object.values(forecasts).reduce((sum, site) => sum + (site?.forecast || 0), 0);
     const totalMonthlyGoal = Object.values(kpiData).reduce((sum, site) => sum + site.monthlyGoal, 0);
     return { revenue: totalRevenue, retention: avgRetention, nps: avgNps, averageTicket: avgTicket, salesForecast: totalForecast, monthlyGoal: totalMonthlyGoal };
-  }, [forecasts]);
+  }, [kpiData, forecasts]);
 
   const chartRevenueData = selectedSite !== 'global' ? dailyRevenueData[selectedSite] : [];
   const chartMembersData = selectedSite !== 'global' ? dailyMembersData[selectedSite] : [];
@@ -355,6 +402,7 @@ export default function DashboardPage() {
                     <TableHead className="text-right">Ticket Promedio</TableHead>
                     <TableHead className="text-right">Retención</TableHead>
                     <TableHead className="text-right">NPS</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -383,6 +431,11 @@ export default function DashboardPage() {
                       <TableCell className="text-right">{formatCurrency(data.averageTicket)}</TableCell>
                       <TableCell className="text-right">{data.retention.toFixed(1)}%</TableCell>
                       <TableCell className="text-right">{data.nps.toFixed(1)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenEditModal(siteId as SiteId)}>
+                            <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -391,6 +444,35 @@ export default function DashboardPage() {
          </Card>
       )}
     </div>
+     <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Editar Meta para {editingSite && siteNames[editingSite]}</DialogTitle>
+          <DialogDescription>Establece la nueva meta de ventas mensual para esta sede.</DialogDescription>
+        </DialogHeader>
+        <Form {...goalForm}>
+          <form onSubmit={goalForm.handleSubmit(handleGoalSubmit)} className="space-y-4 py-4">
+            <FormField
+              control={goalForm.control}
+              name="monthlyGoal"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nueva Meta Mensual (COP)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="30000000" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button type="submit">Guardar Cambios</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
     </TooltipProvider>
   );
 }
+
