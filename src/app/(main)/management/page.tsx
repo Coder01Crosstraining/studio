@@ -135,34 +135,62 @@ function SiteManagement({ sites, loading, refetchSites }: { sites: Site[], loadi
       </CardHeader>
       <CardContent>
         {loading ? <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead className="text-right w-[120px]">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile View */}
+            <div className="space-y-4 md:hidden">
               {sites.map(site => (
-                <TableRow key={site.id}>
-                  <TableCell className="font-medium">{site.name}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(site)}><Edit className="h-4 w-4" /></Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Esto eliminará permanentemente la sede. Los usuarios asignados a esta sede deberán ser reasignados.</AlertDialogDescription></AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleSiteDelete(site.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
-                </TableRow>
+                <Card key={site.id}>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <p className="font-medium">{site.name}</p>
+                    <div className="flex items-center">
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(site)}><Edit className="h-4 w-4" /></Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Esto eliminará permanentemente la sede. Los usuarios asignados a esta sede deberán ser reasignados.</AlertDialogDescription></AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleSiteDelete(site.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+            {/* Desktop View */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead className="text-right w-[120px]">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sites.map(site => (
+                    <TableRow key={site.id}>
+                      <TableCell className="font-medium">{site.name}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(site)}><Edit className="h-4 w-4" /></Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Esto eliminará permanentemente la sede. Los usuarios asignados a esta sede deberán ser reasignados.</AlertDialogDescription></AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleSiteDelete(site.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
@@ -224,22 +252,48 @@ function UserManagement({ sites, users, loading, refetchUsers }: { sites: Site[]
       </CardHeader>
       <CardContent>
         {loading ? <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Email</TableHead><TableHead>Rol</TableHead><TableHead>Sede</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile View */}
+            <div className="space-y-4 md:hidden">
               {users.map(user => (
-                <TableRow key={user.uid}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.role}</TableCell>
-                  <TableCell>{user.siteId ? siteMap.get(user.siteId) || 'N/A' : 'N/A'}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(user)}><Edit className="h-4 w-4" /></Button>
-                  </TableCell>
-                </TableRow>
+                <Card key={user.uid}>
+                  <CardHeader className="p-4 flex flex-row items-start justify-between">
+                      <div>
+                        <CardTitle className="text-base">{user.name}</CardTitle>
+                        <CardDescription>{user.email}</CardDescription>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(user)}><Edit className="h-4 w-4" /></Button>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0 text-sm space-y-2">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div><p className="text-muted-foreground">Rol</p><p className="font-medium">{user.role}</p></div>
+                        <div><p className="text-muted-foreground">Sede</p><p className="font-medium">{user.siteId ? siteMap.get(user.siteId) || 'N/A' : 'N/A'}</p></div>
+                      </div>
+                  </CardContent>
+                </Card>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+            
+            {/* Desktop View */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Email</TableHead><TableHead>Rol</TableHead><TableHead>Sede</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {users.map(user => (
+                    <TableRow key={user.uid}>
+                      <TableCell className="font-medium">{user.name}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.role}</TableCell>
+                      <TableCell>{user.siteId ? siteMap.get(user.siteId) || 'N/A' : 'N/A'}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(user)}><Edit className="h-4 w-4" /></Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
         )}
       </CardContent>
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

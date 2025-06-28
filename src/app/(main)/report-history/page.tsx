@@ -12,7 +12,7 @@ import { Eye, Loader2 } from 'lucide-react';
 import type { DailyReport, Site, SiteId } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, collectionGroup } from 'firebase/firestore';
 
 export default function ReportHistoryPage() {
   const { role, user } = useAuth();
@@ -33,20 +33,10 @@ export default function ReportHistoryPage() {
                 const sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
                 setSites(sitesData);
                 
-                const allReportsPromises = sitesData.map(site => {
-                    const reportsRef = collection(db, 'sites', site.id, 'daily-reports');
-                    return getDocs(query(reportsRef, orderBy('date', 'desc')));
-                });
+                const reportsQuery = query(collectionGroup(db, 'daily-reports'), orderBy('date', 'desc'));
+                const reportsSnapshot = await getDocs(reportsQuery);
                 
-                const allReportsSnapshots = await Promise.all(allReportsPromises);
-                const fetchedReports: DailyReport[] = [];
-                allReportsSnapshots.forEach(snapshot => {
-                    snapshot.docs.forEach(doc => {
-                       fetchedReports.push({ id: doc.id, ...doc.data() } as DailyReport)
-                    });
-                });
-
-                fetchedReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                const fetchedReports = reportsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyReport));
                 setReports(fetchedReports);
 
             } else { // Site Leader
@@ -112,65 +102,131 @@ export default function ReportHistoryPage() {
           {isLoading ? (
              <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
           ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fecha</TableHead>
-                {role === 'CEO' && <TableHead>Sede</TableHead>}
-                <TableHead>Líder</TableHead>
-                <TableHead className="text-right">Ventas</TableHead>
-                <TableHead className="text-right">Nuevos Miembros</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <>
+            {/* Mobile View */}
+            <div className="space-y-4 md:hidden">
+              {filteredReports.length === 0 && <p className="text-center text-muted-foreground pt-8">No hay reportes para mostrar.</p>}
               {filteredReports.map((report) => (
-                <TableRow key={report.id}>
-                  <TableCell>{format(new Date(report.date), 'PPP', { locale: es })}</TableCell>
-                  {role === 'CEO' && <TableCell>{siteMap.get(report.siteId) || report.siteId}</TableCell>}
-                  <TableCell className="font-medium">{report.leaderName}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(report.newRevenue)}</TableCell>
-                  <TableCell className="text-right">{report.newMembers}</TableCell>
-                  <TableCell className="text-right">
-                    <Dialog onOpenChange={(open) => !open && setSelectedReport(null)}>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => setSelectedReport(report)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[625px]">
-                        <DialogHeader>
-                          <DialogTitle>Reporte de {siteMap.get(report.siteId)} - {format(new Date(report.date), 'PPP', { locale: es })}</DialogTitle>
-                          <DialogDescription>Enviado por {report.leaderName}</DialogDescription>
-                        </DialogHeader>
-                        {selectedReport && (
-                        <div className="space-y-4 py-4 text-sm">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><p className="font-semibold">Ventas del Día</p><p className="text-muted-foreground">{formatCurrency(selectedReport.newRevenue)}</p></div>
-                                <div><p className="font-semibold">Tasa de Renovación</p><p className="text-muted-foreground">{selectedReport.renewalRate}%</p></div>
-                                <div><p className="font-semibold">Nuevos Miembros</p><p className="text-muted-foreground">{selectedReport.newMembers}</p></div>
-                                <div><p className="font-semibold">Miembros Perdidos</p><p className="text-muted-foreground">{selectedReport.lostMembers}</p></div>
-                                <div><p className="font-semibold">NPS Promedio</p><p className="text-muted-foreground">{selectedReport.avgNPS}/10</p></div>
-                                <div><p className="font-semibold">Satisfacción Coach</p><p className="text-muted-foreground">{selectedReport.coachSatisfaction}/5</p></div>
-                            </div>
-                           <div><p className="font-semibold">Logro del Día</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.dailyWin}</p></div>
-                           <div><p className="font-semibold">Desafío del Día</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.dailyChallenge}</p></div>
-                           <div><p className="font-semibold">Lección Aprendida</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.lessonLearned}</p></div>
-                        </div>
-                        )}
-                        <DialogFooter>
-                            <DialogClose asChild><Button>Cerrar</Button></DialogClose>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </TableCell>
-                </TableRow>
+                <Card key={report.id}>
+                  <CardHeader className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-base">{format(new Date(report.date), 'PPP', { locale: es })}</CardTitle>
+                        <CardDescription>
+                          {role === 'CEO' ? `${siteMap.get(report.siteId) || report.siteId} - ` : ''}
+                          {report.leaderName}
+                        </CardDescription>
+                      </div>
+                      <Dialog onOpenChange={(open) => !open && setSelectedReport(null)}>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => setSelectedReport(report)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[625px]">
+                          <DialogHeader>
+                            <DialogTitle>Reporte de {siteMap.get(report.siteId)} - {format(new Date(report.date), 'PPP', { locale: es })}</DialogTitle>
+                            <DialogDescription>Enviado por {report.leaderName}</DialogDescription>
+                          </DialogHeader>
+                          {selectedReport && (
+                          <div className="space-y-4 py-4 text-sm">
+                              <div className="grid grid-cols-2 gap-4">
+                                  <div><p className="font-semibold">Ventas del Día</p><p className="text-muted-foreground">{formatCurrency(selectedReport.newRevenue)}</p></div>
+                                  <div><p className="font-semibold">Tasa de Renovación</p><p className="text-muted-foreground">{selectedReport.renewalRate}%</p></div>
+                                  <div><p className="font-semibold">Nuevos Miembros</p><p className="text-muted-foreground">{selectedReport.newMembers}</p></div>
+                                  <div><p className="font-semibold">Miembros Perdidos</p><p className="text-muted-foreground">{selectedReport.lostMembers}</p></div>
+                                  <div><p className="font-semibold">NPS Promedio</p><p className="text-muted-foreground">{selectedReport.avgNPS}/10</p></div>
+                                  <div><p className="font-semibold">Satisfacción Coach</p><p className="text-muted-foreground">{selectedReport.coachSatisfaction}/5</p></div>
+                              </div>
+                            <div><p className="font-semibold">Logro del Día</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.dailyWin}</p></div>
+                            <div><p className="font-semibold">Desafío del Día</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.dailyChallenge}</p></div>
+                            <div><p className="font-semibold">Lección Aprendida</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.lessonLearned}</p></div>
+                          </div>
+                          )}
+                          <DialogFooter>
+                              <DialogClose asChild><Button>Cerrar</Button></DialogClose>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0 text-sm grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-muted-foreground">Ventas</p>
+                      <p className="font-medium">{formatCurrency(report.newRevenue)}</p>
+                    </div>
+                     <div>
+                      <p className="text-muted-foreground">Nuevos Miembros</p>
+                      <p className="font-medium">{report.newMembers}</p>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
-                {filteredReports.length === 0 && !isLoading && (
-                    <TableRow><TableCell colSpan={role === 'CEO' ? 6 : 5} className="h-24 text-center">No hay reportes para mostrar.</TableCell></TableRow>
-                )}
-            </TableBody>
-          </Table>
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    {role === 'CEO' && <TableHead>Sede</TableHead>}
+                    <TableHead>Líder</TableHead>
+                    <TableHead className="text-right">Ventas</TableHead>
+                    <TableHead className="text-right">Nuevos Miembros</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredReports.length === 0 && !isLoading && (
+                      <TableRow><TableCell colSpan={role === 'CEO' ? 6 : 5} className="h-24 text-center">No hay reportes para mostrar.</TableCell></TableRow>
+                  )}
+                  {filteredReports.map((report) => (
+                    <TableRow key={report.id}>
+                      <TableCell>{format(new Date(report.date), 'PPP', { locale: es })}</TableCell>
+                      {role === 'CEO' && <TableCell>{siteMap.get(report.siteId) || report.siteId}</TableCell>}
+                      <TableCell className="font-medium">{report.leaderName}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(report.newRevenue)}</TableCell>
+                      <TableCell className="text-right">{report.newMembers}</TableCell>
+                      <TableCell className="text-right">
+                        <Dialog onOpenChange={(open) => !open && setSelectedReport(null)}>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => setSelectedReport(report)}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[625px]">
+                            <DialogHeader>
+                              <DialogTitle>Reporte de {siteMap.get(report.siteId)} - {format(new Date(report.date), 'PPP', { locale: es })}</DialogTitle>
+                              <DialogDescription>Enviado por {report.leaderName}</DialogDescription>
+                            </DialogHeader>
+                            {selectedReport && (
+                            <div className="space-y-4 py-4 text-sm">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><p className="font-semibold">Ventas del Día</p><p className="text-muted-foreground">{formatCurrency(selectedReport.newRevenue)}</p></div>
+                                    <div><p className="font-semibold">Tasa de Renovación</p><p className="text-muted-foreground">{selectedReport.renewalRate}%</p></div>
+                                    <div><p className="font-semibold">Nuevos Miembros</p><p className="text-muted-foreground">{selectedReport.newMembers}</p></div>
+                                    <div><p className="font-semibold">Miembros Perdidos</p><p className="text-muted-foreground">{selectedReport.lostMembers}</p></div>
+                                    <div><p className="font-semibold">NPS Promedio</p><p className="text-muted-foreground">{selectedReport.avgNPS}/10</p></div>
+                                    <div><p className="font-semibold">Satisfacción Coach</p><p className="text-muted-foreground">{selectedReport.coachSatisfaction}/5</p></div>
+                                </div>
+                              <div><p className="font-semibold">Logro del Día</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.dailyWin}</p></div>
+                              <div><p className="font-semibold">Desafío del Día</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.dailyChallenge}</p></div>
+                              <div><p className="font-semibold">Lección Aprendida</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.lessonLearned}</p></div>
+                            </div>
+                            )}
+                            <DialogFooter>
+                                <DialogClose asChild><Button>Cerrar</Button></DialogClose>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
           )}
         </CardContent>
       </Card>

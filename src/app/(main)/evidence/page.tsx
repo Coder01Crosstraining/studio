@@ -217,31 +217,27 @@ export default function EvidencePage() {
         {isFetching ? (
           <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
         ) : (
-          <Table>
-            <TableHeader><TableRow>
-                <TableHead>Título</TableHead>
-                {role === 'CEO' && <TableHead>Sede</TableHead>}
-                <TableHead>Categoría</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {filteredDocuments.length === 0 && <TableRow><TableCell colSpan={role === 'CEO' ? 5: 4} className="h-24 text-center">No hay documentos.</TableCell></TableRow>}
+          <>
+            {/* Mobile View */}
+            <div className="space-y-4 md:hidden">
+              {filteredDocuments.length === 0 && <p className="text-center text-muted-foreground pt-8">No hay documentos.</p>}
               {filteredDocuments.map((doc) => (
-                <TableRow key={doc.id}>
-                  <TableCell className="font-medium">{doc.title}</TableCell>
-                  {role === 'CEO' && <TableCell>{siteMap.get(doc.siteId) || doc.siteId}</TableCell>}
-                  <TableCell><Badge className={cn("capitalize", categoryColors[doc.category])} variant="outline">{categoryText[doc.category]}</Badge></TableCell>
-                  <TableCell>{format(doc.uploadedAt as Date, 'PPP', { locale: es })}</TableCell>
-                  <TableCell className="text-right">
-                    <Dialog onOpenChange={(open) => !open && setSelectedDocument(null)}>
+                <Card key={doc.id}>
+                  <CardHeader className="p-4 flex flex-row items-start justify-between">
+                    <div className="flex-1 pr-4">
+                      <CardTitle className="text-base leading-tight">{doc.title}</CardTitle>
+                      <CardDescription className="pt-1">
+                        {role === 'CEO' ? `${siteMap.get(doc.siteId) || doc.siteId} - ` : ''}
+                        {format(doc.uploadedAt as Date, 'PPP', { locale: es })}
+                      </CardDescription>
+                    </div>
+                     <Dialog onOpenChange={(open) => !open && setSelectedDocument(null)}>
                       <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedDocument(doc)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
                       <DialogContent className="sm:max-w-[625px]">
                         <DialogHeader><DialogTitle>{selectedDocument?.title}</DialogTitle><DialogDescription>{selectedDocument && categoryText[selectedDocument.category]} - Subido el {selectedDocument && format(selectedDocument.uploadedAt as Date, 'PPP', { locale: es })}</DialogDescription></DialogHeader>
                         {selectedDocument && <div className="space-y-4 py-4 text-sm">
                           <div><p className="font-semibold">Descripción</p><p className="text-muted-foreground">{selectedDocument.description}</p></div>
                           <div><p className="font-semibold">Archivo</p><p className="text-muted-foreground"><a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{selectedDocument.fileName}</a></p></div>
-                          
                           <div className="font-semibold">Vista Previa</div>
                           <div className="rounded-md border p-4 h-80 flex items-center justify-center bg-muted/50">
                             {selectedDocument.fileType === 'image' ? (
@@ -262,16 +258,71 @@ export default function EvidencePage() {
                         <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
                       </DialogContent>
                     </Dialog>
-                  </TableCell>
-                </TableRow>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0">
+                    <Badge className={cn("capitalize", categoryColors[doc.category])} variant="outline">{categoryText[doc.category]}</Badge>
+                  </CardContent>
+                </Card>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader><TableRow>
+                    <TableHead>Título</TableHead>
+                    {role === 'CEO' && <TableHead>Sede</TableHead>}
+                    <TableHead>Categoría</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {filteredDocuments.length === 0 && <TableRow><TableCell colSpan={role === 'CEO' ? 5: 4} className="h-24 text-center">No hay documentos.</TableCell></TableRow>}
+                  {filteredDocuments.map((doc) => (
+                    <TableRow key={doc.id}>
+                      <TableCell className="font-medium">{doc.title}</TableCell>
+                      {role === 'CEO' && <TableCell>{siteMap.get(doc.siteId) || doc.siteId}</TableCell>}
+                      <TableCell><Badge className={cn("capitalize", categoryColors[doc.category])} variant="outline">{categoryText[doc.category]}</Badge></TableCell>
+                      <TableCell>{format(doc.uploadedAt as Date, 'PPP', { locale: es })}</TableCell>
+                      <TableCell className="text-right">
+                        <Dialog onOpenChange={(open) => !open && setSelectedDocument(null)}>
+                          <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedDocument(doc)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
+                          <DialogContent className="sm:max-w-[625px]">
+                            <DialogHeader><DialogTitle>{selectedDocument?.title}</DialogTitle><DialogDescription>{selectedDocument && categoryText[selectedDocument.category]} - Subido el {selectedDocument && format(selectedDocument.uploadedAt as Date, 'PPP', { locale: es })}</DialogDescription></DialogHeader>
+                            {selectedDocument && <div className="space-y-4 py-4 text-sm">
+                              <div><p className="font-semibold">Descripción</p><p className="text-muted-foreground">{selectedDocument.description}</p></div>
+                              <div><p className="font-semibold">Archivo</p><p className="text-muted-foreground"><a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{selectedDocument.fileName}</a></p></div>
+                              
+                              <div className="font-semibold">Vista Previa</div>
+                              <div className="rounded-md border p-4 h-80 flex items-center justify-center bg-muted/50">
+                                {selectedDocument.fileType === 'image' ? (
+                                    <Image src={selectedDocument.fileUrl} alt={`Vista previa de ${selectedDocument.title}`} width={400} height={300} className="max-h-full w-auto object-contain rounded-md" />
+                                ) : (
+                                    <div className="text-center text-muted-foreground flex flex-col items-center gap-4">
+                                        <FileText className="mx-auto h-24 w-24" />
+                                        <div>
+                                            <p>No hay vista previa disponible para archivos PDF.</p>
+                                            <a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">
+                                                Descargar o abrir archivo
+                                            </a>
+                                        </div>
+                                    </div>
+                                )}
+                              </div>
+                            </div>}
+                            <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
           )}
         </CardContent>
       </Card>
     </div>
   );
 }
-
-    

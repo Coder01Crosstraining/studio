@@ -188,42 +188,76 @@ export default function OneOnOnePage() {
         {isFetching ? (
           <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>
         ) : (
-          <Table>
-            <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Empleado</TableHead><TableHead>Rol</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {filteredSessions.length === 0 && <TableRow><TableCell colSpan={4} className="h-24 text-center">No hay sesiones registradas.</TableCell></TableRow>}
+          <>
+            {/* Mobile View */}
+            <div className="space-y-4 md:hidden">
+              {filteredSessions.length === 0 && <p className="text-center text-muted-foreground pt-8">No hay sesiones registradas.</p>}
               {filteredSessions.map((session) => (
-                <TableRow key={session.id}>
-                  <TableCell>{format(new Date(session.sessionDate), 'PPP', { locale: es })}</TableCell>
-                  <TableCell className="font-medium">{session.employeeName}</TableCell>
-                  <TableCell>{employeeRoleText[session.employeeRole]}</TableCell>
-                  <TableCell className="text-right">
-                    <Dialog onOpenChange={(open) => !open && setSelectedSession(null)}>
-                      <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedSession(session)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
-                      <DialogContent className="sm:max-w-[625px]">
-                        <DialogHeader>
-                          <DialogTitle>Sesión con {selectedSession?.employeeName}</DialogTitle>
-                          <DialogDescription>Detalles de la sesión del {selectedSession && format(new Date(selectedSession.sessionDate), 'PPP', { locale: es })}</DialogDescription>
-                        </DialogHeader>
-                        {selectedSession && <div className="space-y-4 py-4 text-sm">
-                          <div><p className="font-semibold">Nivel de Energía</p><p className="text-muted-foreground">{selectedSession.energyCheckIn}/10</p></div>
-                          <div><p className="font-semibold">Logro Principal</p><p className="text-muted-foreground">{selectedSession.mainWin}</p></div>
-                          <div><p className="font-semibold">Oportunidad de Mejora</p><p className="text-muted-foreground">{selectedSession.opportunityForImprovement}</p></div>
-                          <div><p className="font-semibold">Plan de Acción</p><p className="text-muted-foreground">{selectedSession.actionPlan}</p></div>
-                        </div>}
-                         <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </TableCell>
-                </TableRow>
+                <Card key={session.id}>
+                  <CardHeader className="p-4 flex flex-row items-center justify-between">
+                      <div>
+                          <CardTitle className="text-base">{session.employeeName}</CardTitle>
+                          <CardDescription>{employeeRoleText[session.employeeRole]} - {format(new Date(session.sessionDate), 'PPP', { locale: es })}</CardDescription>
+                      </div>
+                      <Dialog onOpenChange={(open) => !open && setSelectedSession(null)}>
+                        <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedSession(session)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
+                        <DialogContent className="sm:max-w-[625px]">
+                          <DialogHeader>
+                            <DialogTitle>Sesión con {selectedSession?.employeeName}</DialogTitle>
+                            <DialogDescription>Detalles de la sesión del {selectedSession && format(new Date(selectedSession.sessionDate), 'PPP', { locale: es })}</DialogDescription>
+                          </DialogHeader>
+                          {selectedSession && <div className="space-y-4 py-4 text-sm">
+                            <div><p className="font-semibold">Nivel de Energía</p><p className="text-muted-foreground">{selectedSession.energyCheckIn}/10</p></div>
+                            <div><p className="font-semibold">Logro Principal</p><p className="text-muted-foreground">{selectedSession.mainWin}</p></div>
+                            <div><p className="font-semibold">Oportunidad de Mejora</p><p className="text-muted-foreground">{selectedSession.opportunityForImprovement}</p></div>
+                            <div><p className="font-semibold">Plan de Acción</p><p className="text-muted-foreground">{selectedSession.actionPlan}</p></div>
+                          </div>}
+                          <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                  </CardHeader>
+                </Card>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+
+            {/* Desktop View */}
+            <div className="hidden md:block">
+              <Table>
+                <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Empleado</TableHead><TableHead>Rol</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {filteredSessions.length === 0 && <TableRow><TableCell colSpan={4} className="h-24 text-center">No hay sesiones registradas.</TableCell></TableRow>}
+                  {filteredSessions.map((session) => (
+                    <TableRow key={session.id}>
+                      <TableCell>{format(new Date(session.sessionDate), 'PPP', { locale: es })}</TableCell>
+                      <TableCell className="font-medium">{session.employeeName}</TableCell>
+                      <TableCell>{employeeRoleText[session.employeeRole]}</TableCell>
+                      <TableCell className="text-right">
+                        <Dialog onOpenChange={(open) => !open && setSelectedSession(null)}>
+                          <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedSession(session)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
+                          <DialogContent className="sm:max-w-[625px]">
+                            <DialogHeader>
+                              <DialogTitle>Sesión con {selectedSession?.employeeName}</DialogTitle>
+                              <DialogDescription>Detalles de la sesión del {selectedSession && format(new Date(selectedSession.sessionDate), 'PPP', { locale: es })}</DialogDescription>
+                            </DialogHeader>
+                            {selectedSession && <div className="space-y-4 py-4 text-sm">
+                              <div><p className="font-semibold">Nivel de Energía</p><p className="text-muted-foreground">{selectedSession.energyCheckIn}/10</p></div>
+                              <div><p className="font-semibold">Logro Principal</p><p className="text-muted-foreground">{selectedSession.mainWin}</p></div>
+                              <div><p className="font-semibold">Oportunidad de Mejora</p><p className="text-muted-foreground">{selectedSession.opportunityForImprovement}</p></div>
+                              <div><p className="font-semibold">Plan de Acción</p><p className="text-muted-foreground">{selectedSession.actionPlan}</p></div>
+                            </div>}
+                            <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
           )}
         </CardContent>
       </Card>
     </div>
   );
 }
-
-    
