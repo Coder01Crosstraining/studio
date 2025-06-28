@@ -12,6 +12,7 @@ import {
   History,
   FolderKanban,
   UserCog,
+  Search,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
@@ -24,7 +25,9 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarSeparator,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -88,7 +91,7 @@ export function SidebarNav() {
 
   return (
     <Sidebar>
-      <SidebarHeader>
+      <SidebarHeader className="flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" className="h-8 w-8 text-primary">
             <rect width="256" height="256" fill="none" />
@@ -101,10 +104,18 @@ export function SidebarNav() {
             <line x1="88" y1="40" x2="88" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
             <line x1="168" y1="40" x2="168" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
           </svg>
-          <span className="text-xl font-semibold">VIBRA OS</span>
+          <span className="text-xl font-semibold group-data-[state=collapsed]:hidden">VIBRA OS</span>
         </Link>
+        <SidebarTrigger />
       </SidebarHeader>
+
       <SidebarContent>
+        <div className="p-2 group-data-[state=collapsed]:hidden">
+            <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input type="search" placeholder="Buscar..." className="pl-8 w-full" />
+            </div>
+        </div>
         <SidebarMenu>
           {filteredNavItems.map((item) => (
              <SidebarMenuItem key={item.href}>
@@ -132,7 +143,7 @@ export function SidebarNav() {
                   <AvatarImage src={`https://i.pravatar.cc/150?u=${user?.email}`} />
                   <AvatarFallback>{user?.name?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1 text-left">
+                <div className="flex-1 text-left group-data-[state=collapsed]:hidden">
                   <p className="truncate text-sm font-medium">{user?.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{user?.role}</p>
                 </div>
