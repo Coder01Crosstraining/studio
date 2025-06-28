@@ -128,7 +128,12 @@ function SiteManagement({ sites, loading, refetchSites }: { sites: Site[], loadi
       <CardContent>
         {loading ? <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
           <Table>
-            <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead className="text-right w-[120px]">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
               {sites.map(site => (
                 <TableRow key={site.id}>
