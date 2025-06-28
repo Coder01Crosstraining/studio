@@ -12,7 +12,6 @@ import {
   History,
   FolderKanban,
   UserCog,
-  ChevronLeft,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
@@ -80,7 +79,7 @@ const navItems = [
 export function SidebarNav() {
   const pathname = usePathname();
   const { user, role, logout } = useAuth();
-  const { toggleSidebar, state } = useSidebar();
+  const { toggleSidebar, isMobile, setOpenMobile } = useSidebar();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -88,33 +87,38 @@ export function SidebarNav() {
     router.push('/login');
   };
 
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  }
+
   const filteredNavItems = navItems.filter(item => !item.roles || item.roles.includes(role || ''));
 
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center justify-between group-data-[state=collapsed]/sidebar:justify-center">
-            <Button 
-              variant="ghost" 
-              className={cn("h-auto w-full justify-start p-2 text-xl font-semibold", "group-data-[state=collapsed]/sidebar:w-auto group-data-[state=collapsed]/sidebar:justify-center")}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" className="h-8 w-8 shrink-0 text-primary">
-                <rect width="256" height="256" fill="none" />
-                <path d="M48,88H208V48a8,8,0,0,0-8-8H56a8,8,0,0,0-8,8Z" opacity="0.2" />
-                <path d="M48,88H208v40a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8Z" opacity="0.2" />
-                <path d="M48,168H208v40a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8Z" opacity="0.2" />
-                <line x1="16" y1="88" x2="240" y2="88" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-                <line x1="16" y1="168" x2="240" y2="168" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-                <path d="M208,40H48a8,8,0,0,0-8,8V208a8,8,0,0,0,8,8H208a8,8,0,0,0,8-8V48A8,8,0,0,0,208,40Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-                <line x1="88" y1="40" x2="88" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-                <line x1="168" y1="40" x2="168" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-              </svg>
-              <span className="ml-2 group-data-[state=collapsed]/sidebar:hidden">VIBRA OS</span>
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[state=collapsed]/sidebar:hidden" onClick={toggleSidebar}>
-                <ChevronLeft className="h-5 w-5" />
-            </Button>
-        </div>
+        <Button 
+            variant="ghost" 
+            onClick={toggleSidebar}
+            className={cn(
+                "h-auto w-full justify-start p-2 text-xl font-semibold", 
+                "group-data-[state=collapsed]/sidebar:w-auto group-data-[state=collapsed]/sidebar:justify-center"
+            )}
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" className="h-8 w-8 shrink-0 text-primary">
+            <rect width="256" height="256" fill="none" />
+            <path d="M48,88H208V48a8,8,0,0,0-8-8H56a8,8,0,0,0-8,8Z" opacity="0.2" />
+            <path d="M48,88H208v40a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8Z" opacity="0.2" />
+            <path d="M48,168H208v40a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8Z" opacity="0.2" />
+            <line x1="16" y1="88" x2="240" y2="88" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+            <line x1="16" y1="168" x2="240" y2="168" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+            <path d="M208,40H48a8,8,0,0,0-8,8V208a8,8,0,0,0,8,8H208a8,8,0,0,0,8-8V48A8,8,0,0,0,208,40Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+            <line x1="88" y1="40" x2="88" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+            <line x1="168" y1="40" x2="168" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+            </svg>
+            <span className="ml-2 group-data-[state=collapsed]/sidebar:hidden">VIBRA OS</span>
+        </Button>
       </SidebarHeader>
 
       <SidebarContent>
@@ -126,7 +130,7 @@ export function SidebarNav() {
                 isActive={pathname === item.href}
                 tooltip={item.label}
               >
-                <Link href={item.href}>
+                <Link href={item.href} onClick={handleLinkClick}>
                   <item.icon />
                   <span className="group-data-[state=collapsed]/sidebar:hidden">{item.label}</span>
                 </Link>
