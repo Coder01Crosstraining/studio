@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, AlertTriangle, UserCog } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 const siteSchema = z.object({
@@ -91,7 +91,7 @@ function SiteManagement({ sites, loading, refetchSites }: { sites: Site[], loadi
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start justify-between">
+      <CardHeader className="flex flex-row items-center justify-between">
         <div>
             <CardTitle>Gestionar Sedes</CardTitle>
             <CardDescription className="pt-1">Añade, edita o elimina sedes de VIBRA.</CardDescription>
