@@ -68,7 +68,7 @@ export default function ReportHistoryPage() {
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 
   return (
-    <div className="w-full space-y-4 p-4 md:p-8 pt-6">
+    <div className="mx-auto w-full max-w-screen-2xl space-y-4 p-4 pt-6 md:p-8">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Historial de Reportes Diarios</h2>
