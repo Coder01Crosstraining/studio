@@ -28,7 +28,7 @@ type SidebarContext = {
   open: boolean
   setOpen: (open: boolean) => void
   openMobile: boolean
-  setOpenMobile: (open: boolean) => void
+  setOpenMobile: (open: boolean | ((open: boolean) => boolean)) => void
   isMobile: boolean
   toggleSidebar: () => void
 }
@@ -223,7 +223,7 @@ const Sidebar = React.forwardRef<
         ref={ref}
         className={cn(
             "group/sidebar peer hidden text-sidebar-foreground transition-all duration-300 ease-in-out md:block",
-            "fixed inset-y-0 z-20",
+            "fixed inset-y-0 z-40",
             side === "left" ? "left-0" : "right-0",
             state === "expanded" && "w-[--sidebar-width]",
             state === "collapsed" && "w-[--sidebar-width-icon]",

@@ -79,7 +79,7 @@ const navItems = [
 export function SidebarNav() {
   const pathname = usePathname();
   const { user, role, logout } = useAuth();
-  const { toggleSidebar, isMobile, setOpenMobile } = useSidebar();
+  const { toggleSidebar, isMobile, setOpenMobile, state, setOpen } = useSidebar();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -90,6 +90,8 @@ export function SidebarNav() {
   const handleLinkClick = () => {
     if (isMobile) {
       setOpenMobile(false);
+    } else if (state === 'expanded') {
+      setOpen(false);
     }
   }
 
