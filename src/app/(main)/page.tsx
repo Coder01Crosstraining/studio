@@ -363,7 +363,7 @@ export default function DashboardPage() {
                 <CardTitle>Comparación de KPIs entre Sedes</CardTitle>
                 <CardDescription>Un resumen de los indicadores clave de todas las sedes.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <Table>
                 <TableHeader><TableRow>
                     <TableHead>Sede</TableHead>
