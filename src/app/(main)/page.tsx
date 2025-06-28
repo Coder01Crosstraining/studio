@@ -23,7 +23,6 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, getDocs, limit, orderBy } from 'firebase/firestore';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { Progress } from '@/components/ui/progress';
 
 const chartConfig = {
@@ -95,7 +94,6 @@ type MembersChartData = { date: string; new: number; lost: number };
 
 export default function DashboardPage() {
   const { user, role } = useAuth();
-  const isMobile = useIsMobile();
   const [sites, setSites] = useState<Site[]>([]);
   const [selectedSite, setSelectedSite] = useState<SiteId | 'global'>(role === 'CEO' ? 'global' : user!.siteId!);
   const [kpiData, setKpiData] = useState<Record<SiteId, Site>>({} as Record<SiteId, Site>);
@@ -362,8 +360,8 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
-        {isMobile ? (
-            <div className="space-y-4">
+            {/* Mobile View: List of Cards */}
+            <div className="space-y-4 md:hidden">
                 <h3 className="text-xl font-bold tracking-tight px-1">Comparación de Sedes</h3>
                 {Object.entries(kpiData).map(([siteId, data]) => {
                     const goalCompletion = data.monthlyGoal > 0 ? (data.revenue / data.monthlyGoal) * 100 : 0;
@@ -373,7 +371,7 @@ export default function DashboardPage() {
                             <CardHeader>
                                 <div className="flex items-start justify-between">
                                     <div>
-                                        <CardTitle>{siteMap.get(siteId as SiteId) || siteId}</CardTitle>
+                                        <CardTitle className="text-lg">{siteMap.get(siteId as SiteId) || siteId}</CardTitle>
                                         <CardDescription>
                                             Meta: {formatCurrency(data.monthlyGoal)}
                                         </CardDescription>
@@ -418,8 +416,9 @@ export default function DashboardPage() {
                     )
                 })}
             </div>
-        ) : (
-            <Card>
+        
+            {/* Desktop View: Table */}
+            <Card className="hidden md:block">
                 <CardHeader>
                     <CardTitle>Comparación de KPIs entre Sedes</CardTitle>
                     <CardDescription>Un resumen de los indicadores clave de todas las sedes.</CardDescription>
@@ -432,14 +431,15 @@ export default function DashboardPage() {
                         <TableHead className="text-right">Meta del Mes</TableHead>
                         <TableHead className="text-right">Cumplimiento (%)</TableHead>
                         <TableHead className="text-right">Pronóstico Ventas</TableHead>
-                        <TableHead className="text-right hidden md:table-cell">Ticket Promedio</TableHead>
-                        <TableHead className="text-right hidden md:table-cell">Retención</TableHead>
-                        <TableHead className="text-right hidden md:table-cell">NPS</TableHead>
+                        <TableHead className="text-right">Ticket Promedio</TableHead>
+                        <TableHead className="text-right">Retención</TableHead>
+                        <TableHead className="text-right">NPS</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                     </TableRow></TableHeader>
                     <TableBody>
                       {Object.entries(kpiData).map(([siteId, data]) => {
                         const goalCompletion = data.monthlyGoal > 0 ? (data.revenue / data.monthlyGoal) * 100 : 0;
+                        const forecast = forecasts[siteId as SiteId];
                         return (
                         <TableRow key={siteId}>
                           <TableCell className="font-medium">{siteMap.get(siteId as SiteId) || siteId}</TableCell>
@@ -456,9 +456,9 @@ export default function DashboardPage() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="text-right hidden md:table-cell">{formatCurrency(data.averageTicket)}</TableCell>
-                          <TableCell className="text-right hidden md:table-cell">{data.retention.toFixed(1)}%</TableCell>
-                          <TableCell className="text-right hidden md:table-cell">{data.nps.toFixed(1)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(data.averageTicket)}</TableCell>
+                          <TableCell className="text-right">{data.retention.toFixed(1)}%</TableCell>
+                          <TableCell className="text-right">{data.nps.toFixed(1)}</TableCell>
                           <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleOpenEditModal(siteId as SiteId)}><Pencil className="h-4 w-4" /></Button></TableCell>
                         </TableRow>
                       );
@@ -467,8 +467,7 @@ export default function DashboardPage() {
                   </Table>
                 </CardContent>
             </Card>
-        )}
-      </>
+        </>
       )}
     </div>
      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
