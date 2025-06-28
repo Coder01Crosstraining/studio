@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, Eye, FileText, Image as ImageIcon } from 'lucide-react';
-import type { EvidenceDocument, SiteId, EvidenceCategory } from '@/lib/types';
+import type { EvidenceDocument, SiteId, EvidenceCategory, Site } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db, storage } from '@/lib/firebase';
@@ -50,15 +50,10 @@ const categoryColors: Record<EvidenceCategory, string> = {
   correctiva: "bg-orange-400/20 text-orange-600 border-orange-400/30",
 };
 
-const siteNames: Record<SiteId, string> = {
-  ciudadela: "VIBRA Ciudadela",
-  floridablanca: "VIBRA Floridablanca",
-  piedecuesta: "VIBRA Piedecuesta",
-};
-
 export default function EvidencePage() {
   const { role, user } = useAuth();
   const [documents, setDocuments] = useState<EvidenceDocument[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [selectedSite, setSelectedSite] = useState<SiteId | 'global'>(role === 'CEO' ? 'global' : user!.siteId!);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -69,19 +64,26 @@ export default function EvidencePage() {
   const form = useForm<z.infer<typeof evidenceSchema>>({ resolver: zodResolver(evidenceSchema) });
 
   useEffect(() => {
-    const fetchDocuments = async () => {
+    async function fetchInitialData() {
         if (!user) return;
         setIsFetching(true);
-        const evidenceRef = collection(db, 'evidence');
-        let q;
-
-        if (role === 'CEO') {
-            q = query(evidenceRef, orderBy('uploadedAt', 'desc'));
-        } else {
-            q = query(evidenceRef, where('siteId', '==', user.siteId), orderBy('uploadedAt', 'desc'));
-        }
-
+        
         try {
+            // Fetch sites for CEO role
+            if (role === 'CEO') {
+                const sitesSnapshot = await getDocs(collection(db, 'sites'));
+                setSites(sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site)));
+            }
+    
+            const evidenceRef = collection(db, 'evidence');
+            let q;
+    
+            if (role === 'CEO') {
+                q = query(evidenceRef, orderBy('uploadedAt', 'desc'));
+            } else {
+                q = query(evidenceRef, where('siteId', '==', user.siteId), orderBy('uploadedAt', 'desc'));
+            }
+
             const querySnapshot = await getDocs(q);
             const fetchedDocs = querySnapshot.docs.map(doc => {
                 const data = doc.data();
@@ -100,8 +102,10 @@ export default function EvidencePage() {
         }
     };
 
-    fetchDocuments();
+    fetchInitialData();
   }, [user, role, toast]);
+
+  const siteMap = React.useMemo(() => new Map(sites.map(s => [s.id, s.name])), [sites]);
 
   async function onUploadSubmit(values: z.infer<typeof evidenceSchema>) {
     if (!user || !user.siteId) return;
@@ -196,9 +200,9 @@ export default function EvidencePage() {
             <SelectTrigger className="w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="global">Todas las Sedes</SelectItem>
-              <SelectItem value="ciudadela">VIBRA Ciudadela</SelectItem>
-              <SelectItem value="floridablanca">VIBRA Floridablanca</SelectItem>
-              <SelectItem value="piedecuesta">VIBRA Piedecuesta</SelectItem>
+              {sites.map(site => (
+                <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -222,7 +226,7 @@ export default function EvidencePage() {
               {filteredDocuments.map((doc) => (
                 <TableRow key={doc.id}>
                   <TableCell className="font-medium">{doc.title}</TableCell>
-                  {role === 'CEO' && <TableCell>{siteNames[doc.siteId]}</TableCell>}
+                  {role === 'CEO' && <TableCell>{siteMap.get(doc.siteId) || doc.siteId}</TableCell>}
                   <TableCell><Badge className={cn("capitalize", categoryColors[doc.category])} variant="outline">{categoryText[doc.category]}</Badge></TableCell>
                   <TableCell>{format(doc.uploadedAt as Date, 'PPP', { locale: es })}</TableCell>
                   <TableCell className="text-right">

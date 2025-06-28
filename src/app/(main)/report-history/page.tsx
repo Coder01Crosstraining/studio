@@ -9,46 +9,53 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Eye, Loader2 } from 'lucide-react';
-import type { DailyReport, SiteId } from '@/lib/types';
+import type { DailyReport, Site, SiteId } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
-const siteNames: Record<SiteId, string> = {
-  ciudadela: "VIBRA Ciudadela",
-  floridablanca: "VIBRA Floridablanca",
-  piedecuesta: "VIBRA Piedecuesta",
-};
-
 export default function ReportHistoryPage() {
   const { role, user } = useAuth();
   const [reports, setReports] = useState<DailyReport[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSite, setSelectedSite] = useState<SiteId | 'global'>(role === 'CEO' ? 'global' : user!.siteId!);
   const [selectedReport, setSelectedReport] = useState<DailyReport | null>(null);
 
   useEffect(() => {
-    const fetchReports = async () => {
-      if (!user) return;
-      setIsLoading(true);
+    async function fetchInitialData() {
+        if (!user) return;
+        setIsLoading(true);
 
-      const reportsRef = collection(db, 'daily-reports');
-      let q;
+        try {
+            if (role === 'CEO') {
+                const sitesSnapshot = await getDocs(collection(db, 'sites'));
+                setSites(sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site)));
+            }
 
-      if (role === 'CEO') {
-        q = query(reportsRef, orderBy('date', 'desc'));
-      } else {
-        q = query(reportsRef, where('siteId', '==', user.siteId), orderBy('date', 'desc'));
-      }
-      
-      const querySnapshot = await getDocs(q);
-      const fetchedReports = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyReport));
-      setReports(fetchedReports);
-      setIsLoading(false);
+            const reportsRef = collection(db, 'daily-reports');
+            let q;
+
+            if (role === 'CEO') {
+                q = query(reportsRef, orderBy('date', 'desc'));
+            } else {
+                q = query(reportsRef, where('siteId', '==', user.siteId), orderBy('date', 'desc'));
+            }
+            
+            const querySnapshot = await getDocs(q);
+            const fetchedReports = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyReport));
+            setReports(fetchedReports);
+        } catch (error) {
+            console.error("Error fetching reports", error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    fetchReports();
+    fetchInitialData();
   }, [user, role]);
+  
+  const siteMap = React.useMemo(() => new Map(sites.map(s => [s.id, s.name])), [sites]);
 
   const filteredReports = reports.filter(r => {
     if (role === 'CEO') {
@@ -75,9 +82,9 @@ export default function ReportHistoryPage() {
             <SelectTrigger className="w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="global">Todas las Sedes</SelectItem>
-              <SelectItem value="ciudadela">VIBRA Ciudadela</SelectItem>
-              <SelectItem value="floridablanca">VIBRA Floridablanca</SelectItem>
-              <SelectItem value="piedecuesta">VIBRA Piedecuesta</SelectItem>
+              {sites.map(site => (
+                <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -103,7 +110,7 @@ export default function ReportHistoryPage() {
               {filteredReports.map((report) => (
                 <TableRow key={report.id}>
                   <TableCell>{format(new Date(report.date), 'PPP', { locale: es })}</TableCell>
-                  {role === 'CEO' && <TableCell>{siteNames[report.siteId]}</TableCell>}
+                  {role === 'CEO' && <TableCell>{siteMap.get(report.siteId) || report.siteId}</TableCell>}
                   <TableCell className="font-medium">{report.leaderName}</TableCell>
                   <TableCell className="text-right">{formatCurrency(report.newRevenue)}</TableCell>
                   <TableCell className="text-right">{report.newMembers}</TableCell>
@@ -116,7 +123,7 @@ export default function ReportHistoryPage() {
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-[625px]">
                         <DialogHeader>
-                          <DialogTitle>Reporte de {report.siteId} - {format(new Date(report.date), 'PPP', { locale: es })}</DialogTitle>
+                          <DialogTitle>Reporte de {siteMap.get(report.siteId)} - {format(new Date(report.date), 'PPP', { locale: es })}</DialogTitle>
                           <DialogDescription>Enviado por {report.leaderName}</DialogDescription>
                         </DialogHeader>
                         {selectedReport && (

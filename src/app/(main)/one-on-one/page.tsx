@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, Eye } from 'lucide-react';
-import type { OneOnOneSession, EmployeeRole, SiteId } from '@/lib/types';
+import type { OneOnOneSession, EmployeeRole, SiteId, Site } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
@@ -39,9 +39,10 @@ const employeeRoleText: Record<EmployeeRole, string> = {
 export default function OneOnOnePage() {
   const { role, user } = useAuth();
   const [sessions, setSessions] = useState<OneOnOneSession[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
-  const [selectedSite, setSelectedSite] = useState<SiteId>(role === 'CEO' ? 'ciudadela' : user?.siteId!);
+  const [selectedSite, setSelectedSite] = useState<SiteId>(user?.siteId || '');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState<OneOnOneSession | null>(null);
   const { toast } = useToast();
@@ -54,26 +55,48 @@ export default function OneOnOnePage() {
   });
 
   useEffect(() => {
-    const fetchSessions = async () => {
-      if (!user) return;
-      setIsFetching(true);
-      const sessionsRef = collection(db, 'one-on-one-sessions');
-      let q;
-
-      if (role === 'CEO') {
-        q = query(sessionsRef, orderBy('createdAt', 'desc'));
-      } else {
-        q = query(sessionsRef, where('siteId', '==', user.siteId), orderBy('createdAt', 'desc'));
-      }
-
-      const querySnapshot = await getDocs(q);
-      const fetchedSessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OneOnOneSession));
-      setSessions(fetchedSessions);
-      setIsFetching(false);
+    async function fetchInitialData() {
+        if (!user) return;
+        setIsFetching(true);
+        try {
+            if (role === 'CEO') {
+                const sitesSnapshot = await getDocs(collection(db, 'sites'));
+                const sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
+                setSites(sitesData);
+                if (sitesData.length > 0) {
+                    setSelectedSite(sitesData[0].id);
+                }
+            }
+    
+            const sessionsRef = collection(db, 'one-on-one-sessions');
+            let q;
+    
+            if (role === 'CEO') {
+                q = query(sessionsRef, orderBy('createdAt', 'desc'));
+            } else {
+                q = query(sessionsRef, where('siteId', '==', user.siteId), orderBy('createdAt', 'desc'));
+            }
+    
+            const querySnapshot = await getDocs(q);
+            const fetchedSessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OneOnOneSession));
+            setSessions(fetchedSessions);
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar los datos.' });
+        } finally {
+            setIsFetching(false);
+        }
     };
 
-    fetchSessions();
-  }, [user, role]);
+    fetchInitialData();
+  }, [user, role, toast]);
+  
+  useEffect(() => {
+    if (role === 'CEO' && sites.length > 0 && !selectedSite) {
+        setSelectedSite(sites[0].id)
+    }
+  }, [sites, role, selectedSite]);
+
 
   async function onSubmit(values: z.infer<typeof sessionSchema>) {
     if (!user || !user.siteId) return;
@@ -148,12 +171,12 @@ export default function OneOnOnePage() {
 
       {role === 'CEO' && (
         <div className="pb-4">
-          <Select onValueChange={(value: SiteId) => setSelectedSite(value)} defaultValue={selectedSite}>
+          <Select onValueChange={(value: SiteId) => setSelectedSite(value)} value={selectedSite}>
             <SelectTrigger className="w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="ciudadela">VIBRA Ciudadela</SelectItem>
-              <SelectItem value="floridablanca">VIBRA Floridablanca</SelectItem>
-              <SelectItem value="piedecuesta">VIBRA Piedecuesta</SelectItem>
+              {sites.map(site => (
+                  <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

@@ -1,7 +1,7 @@
 import type { Timestamp } from 'firebase/firestore';
 
 export type UserRole = "CEO" | "SiteLeader";
-export type SiteId = "ciudadela" | "floridablanca" | "piedecuesta";
+export type SiteId = string;
 
 export interface User {
   uid: string;

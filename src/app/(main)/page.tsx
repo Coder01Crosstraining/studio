@@ -24,12 +24,6 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, getDocs, limit, orderBy } from 'firebase/firestore';
 
-const siteNames: Record<SiteId, string> = {
-  ciudadela: "VIBRA Ciudadela",
-  floridablanca: "VIBRA Floridablanca",
-  piedecuesta: "VIBRA Piedecuesta",
-};
-
 const chartConfig = {
   revenue: { label: 'Ingresos', color: 'hsl(var(--chart-1))' },
   goal: { label: 'Meta', color: 'hsl(var(--chart-2))' },
@@ -99,16 +93,13 @@ type MembersChartData = { date: string; new: number; lost: number };
 
 export default function DashboardPage() {
   const { user, role } = useAuth();
+  const [sites, setSites] = useState<Site[]>([]);
   const [selectedSite, setSelectedSite] = useState<SiteId | 'global'>(role === 'CEO' ? 'global' : user!.siteId!);
   const [kpiData, setKpiData] = useState<Record<SiteId, Site>>({} as Record<SiteId, Site>);
   const [dailyData, setDailyData] = useState<Record<SiteId, {revenue: DailyChartData[], members: MembersChartData[]}>>({} as Record<SiteId, any>);
   const [isKpiLoading, setIsKpiLoading] = useState(true);
 
-  const [forecasts, setForecasts] = useState<Record<SiteId, GenerateSalesForecastOutput | null>>({
-    ciudadela: null,
-    floridablanca: null,
-    piedecuesta: null,
-  });
+  const [forecasts, setForecasts] = useState<Record<SiteId, GenerateSalesForecastOutput | null>>({});
   const [isForecastLoading, setIsForecastLoading] = useState(true);
 
   const { toast } = useToast();
@@ -118,6 +109,20 @@ export default function DashboardPage() {
   const kpiForm = useForm<z.infer<typeof kpiSchema>>({
     resolver: zodResolver(kpiSchema),
   });
+
+  // Fetch sites for CEO
+  useEffect(() => {
+    if (role === 'CEO') {
+      const q = query(collection(db, 'sites'));
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const sitesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
+        setSites(sitesData);
+      });
+      return () => unsubscribe();
+    }
+  }, [role]);
+  
+  const siteMap = useMemo(() => new Map(sites.map(s => [s.id, s.name])), [sites]);
 
   // Fetch KPI data in real-time
   useEffect(() => {
@@ -194,15 +199,11 @@ export default function DashboardPage() {
         });
         const results = await Promise.all(forecastPromises);
         
-        setForecasts(prev => {
-          const newForecasts = { ...prev };
-          sitesToFetch.forEach((siteId, index) => {
-            if (results[index]) {
-              newForecasts[siteId] = results[index] as GenerateSalesForecastOutput;
-            }
-          });
-          return newForecasts;
+        const newForecasts: Record<SiteId, GenerateSalesForecastOutput | null> = {};
+        sitesToFetch.forEach((siteId, index) => {
+            newForecasts[siteId] = results[index] as GenerateSalesForecastOutput;
         });
+        setForecasts(newForecasts);
 
       } catch (error) {
         console.error("Failed to generate forecasts:", error);
@@ -232,7 +233,7 @@ export default function DashboardPage() {
       });
       toast({
         title: 'Éxito',
-        description: `Los KPIs para ${siteNames[editingSite]} han sido actualizados.`,
+        description: `Los KPIs para ${siteMap.get(editingSite) || editingSite} han sido actualizados.`,
       });
       setIsEditModalOpen(false);
       setEditingSite(null);
@@ -248,8 +249,8 @@ export default function DashboardPage() {
 
   const dashboardTitle = useMemo(() => {
     if (selectedSite === 'global') return "Panel Global";
-    return `Panel de Sede: ${siteNames[selectedSite]}`;
-  }, [selectedSite]);
+    return `Panel de Sede: ${siteMap.get(selectedSite) || selectedSite}`;
+  }, [selectedSite, siteMap]);
   
   const currentKpis = selectedSite !== 'global' ? kpiData[selectedSite] : null;
   const currentForecast = selectedSite !== 'global' ? forecasts[selectedSite] : null;
@@ -286,7 +287,7 @@ export default function DashboardPage() {
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="global">Resumen Global</SelectItem>
-              {Object.keys(siteNames).map(id => <SelectItem key={id} value={id}>{siteNames[id as SiteId]}</SelectItem>)}
+              {sites.map(site => <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>)}
             </SelectContent>
           </Select>
         )}
@@ -368,7 +369,7 @@ export default function DashboardPage() {
                 <TableBody>
                   {Object.entries(kpiData).map(([siteId, data]) => (
                     <TableRow key={siteId}>
-                      <TableCell className="font-medium">{siteNames[siteId as SiteId]}</TableCell><TableCell className="text-right">{formatCurrency(data.revenue)}</TableCell>
+                      <TableCell className="font-medium">{siteMap.get(siteId as SiteId) || siteId}</TableCell><TableCell className="text-right">{formatCurrency(data.revenue)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(data.monthlyGoal)}</TableCell>
                       <TableCell className="text-right">
                         {isForecastLoading && !forecasts[siteId as SiteId] ? ( <div className="flex justify-end"><Loader2 className="h-4 w-4 animate-spin" /></div> ) : (
@@ -392,7 +393,7 @@ export default function DashboardPage() {
     </div>
      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
       <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader><DialogTitle>Editar KPIs para {editingSite && siteNames[editingSite]}</DialogTitle><DialogDescription>Ajusta las ventas a la fecha y la meta mensual para esta sede.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Editar KPIs para {editingSite && (siteMap.get(editingSite) || editingSite)}</DialogTitle><DialogDescription>Ajusta las ventas a la fecha y la meta mensual para esta sede.</DialogDescription></DialogHeader>
         <Form {...kpiForm}>
           <form onSubmit={kpiForm.handleSubmit(handleKpiSubmit)} className="space-y-4 py-4">
             <FormField control={kpiForm.control} name="revenue" render={({ field }) => ( <FormItem><FormLabel>Ventas a la Fecha (COP)</FormLabel><FormControl><Input type="number" placeholder="7500000" {...field} /></FormControl><FormMessage /></FormItem> )} />

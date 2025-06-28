@@ -11,6 +11,7 @@ import {
   Settings,
   History,
   FolderKanban,
+  UsersCog,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
@@ -65,6 +66,12 @@ const navItems = [
     label: "Gestión Documental",
     roles: ["SiteLeader", "CEO"],
   },
+  {
+    href: "/management",
+    icon: UsersCog,
+    label: "Gestión",
+    roles: ["CEO"],
+  }
 ];
 
 export function SidebarNav() {
