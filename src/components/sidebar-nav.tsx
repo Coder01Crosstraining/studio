@@ -81,6 +81,7 @@ export function SidebarNav() {
   const pathname = usePathname();
   const { user, role, logout } = useAuth();
   const router = useRouter();
+  const [search, setSearch] = React.useState("");
 
   const handleLogout = () => {
     logout();
@@ -113,7 +114,7 @@ export function SidebarNav() {
         <div className="p-2 group-data-[state=collapsed]:hidden">
             <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Buscar..." className="pl-8 w-full" />
+                <Input type="search" placeholder="Buscar..." className="pl-8 w-full" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
         </div>
         <SidebarMenu>
