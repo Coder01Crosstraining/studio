@@ -45,12 +45,21 @@ Contexto del mes actual:
 - Datos históricos de días anteriores (solo para referencia si aún no han pasado días): {{#each historicalRevenue}}COP {{this}}, {{/each}}
 
 Sigue estos pasos EXACTOS para tu cálculo:
-1.  Calcula el promedio de ventas por DÍA CALENDARIO transcurrido. La fórmula es: (Ventas acumuladas hasta la fecha / Días transcurridos en el mes).
-    *   Si "Días transcurridos en el mes" es 0, usa el promedio de los datos históricos como el promedio de ventas diario.
-2.  Proyecta las ventas para el resto del mes. La fórmula es: (promedio de ventas por DÍA CALENDARIO * Días comerciales efectivos restantes).
-3.  Calcula el pronóstico total del mes. La fórmula es: (Ventas acumuladas hasta la fecha + ventas proyectadas).
 
-Basado en este cálculo, responde únicamente con el número final del pronóstico y una breve frase explicando tu razonamiento (ej: "Calculado en base al promedio diario y los días comerciales restantes.").
+1.  Determina el "Promedio de Ventas Diario" a utilizar para la proyección.
+    *   **CASO A:** Si los "Días transcurridos en el mes" ({{elapsedDaysInMonth}}) es mayor que 0, calcula el promedio así: (Ventas acumuladas hasta la fecha / Días transcurridos en el mes).
+    *   **CASO B:** Si los "Días transcurridos en el mes" es 0 Y existen "Datos históricos", calcula el promedio de los "Datos históricos".
+    *   **CASO C:** Si los "Días transcurridos en el mes" es 0 Y NO existen "Datos históricos", el "Promedio de Ventas Diario" es 0. No es posible hacer una proyección.
+
+2.  Calcula las "Ventas Proyectadas" para el resto del mes. La fórmula es: ("Promedio de Ventas Diario" * Días comerciales efectivos restantes). Si el promedio es 0, las ventas proyectadas son 0.
+
+3.  Calcula el "Pronóstico Total del Mes". La fórmula es: (Ventas acumuladas hasta la fecha + Ventas Proyectadas).
+
+Basado en este cálculo, responde con el número final del pronóstico.
+Para el razonamiento, sigue estas reglas:
+*   Si usaste el **CASO A**, el razonamiento debe ser: "Calculado en base al promedio de ventas de los {{elapsedDaysInMonth}} días transcurridos y los días comerciales restantes."
+*   Si usaste el **CASO B**, el razonamiento debe ser: "Proyección basada en el rendimiento histórico y los días comerciales restantes, ya que el mes acaba de comenzar."
+*   Si usaste el **CASO C**, el razonamiento debe ser: "El pronóstico corresponde a las ventas actuales. No hay suficientes datos históricos o del mes en curso para realizar una proyección."
 `,
 });
 
