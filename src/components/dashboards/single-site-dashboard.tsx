@@ -6,12 +6,14 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } 
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Site, SiteId, DailyReport } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
-import { Info, Loader2 } from 'lucide-react';
+import { Info, Loader2, RefreshCw } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { format, getDay, getDate, getDaysInMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot, doc, getDocs, limit, orderBy } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 const chartConfig = {
   revenue: { label: 'Ingresos', color: 'hsl(var(--chart-1))' },
@@ -82,7 +84,41 @@ export function SingleSiteDashboard({ siteId }: { siteId: SiteId }) {
     const [isKpiLoading, setIsKpiLoading] = useState(true);
     const [forecast, setForecast] = useState<GenerateSalesForecastOutput | null>(null);
     const [isForecastLoading, setIsForecastLoading] = useState(true);
+    const [isRecalculating, setIsRecalculating] = useState(false);
+    const { toast } = useToast();
     
+    const fetchAndCacheForecast = React.useCallback(async () => {
+        if (!kpiData) return;
+        setIsForecastLoading(true);
+        setIsRecalculating(true);
+        try {
+            const monthProgress = calculateMonthProgress(new Date());
+            const reportsRef = collection(db, 'sites', siteId, 'daily-reports');
+            const q = query(reportsRef, orderBy('date', 'desc'), limit(7));
+            const querySnapshot = await getDocs(q);
+            const historicalRevenue = querySnapshot.docs.map(doc => (doc.data() as DailyReport).newRevenue);
+
+            const result = await generateSalesForecast({
+                historicalRevenue: historicalRevenue,
+                currentMonthRevenue: kpiData.revenue,
+                ...monthProgress,
+            });
+
+            const cachedForecastsRaw = sessionStorage.getItem('vibra-forecasts');
+            const allForecasts = cachedForecastsRaw ? JSON.parse(cachedForecastsRaw) : {};
+            allForecasts[siteId] = result;
+            sessionStorage.setItem('vibra-forecasts', JSON.stringify(allForecasts));
+            
+            setForecast(result);
+        } catch (error) {
+            console.error("Failed to generate forecast:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'No se pudo generar el pronóstico.' });
+        } finally {
+            setIsForecastLoading(false);
+            setIsRecalculating(false);
+        }
+    }, [kpiData, siteId, toast]);
+
     // Fetch KPI data in real-time
     useEffect(() => {
         if(!siteId) return;
@@ -124,33 +160,24 @@ export function SingleSiteDashboard({ siteId }: { siteId: SiteId }) {
         fetchDailyData();
     }, [siteId, kpiData]);
 
-    // Generate Forecast
+    // Generate Forecast, checking cache first
     useEffect(() => {
         if (!kpiData) return;
-
-        async function fetchForecast() {
-            setIsForecastLoading(true);
-            try {
-                const monthProgress = calculateMonthProgress(new Date());
-                const reportsRef = collection(db, 'sites', siteId, 'daily-reports');
-                const q = query(reportsRef, orderBy('date', 'desc'), limit(7));
-                const querySnapshot = await getDocs(q);
-                const historicalRevenue = querySnapshot.docs.map(doc => (doc.data() as DailyReport).newRevenue);
-
-                const result = await generateSalesForecast({
-                    historicalRevenue: historicalRevenue,
-                    currentMonthRevenue: kpiData.revenue,
-                    ...monthProgress,
-                })
-                setForecast(result);
-            } catch (error) {
-                console.error("Failed to generate forecast:", error);
-            } finally {
+        
+        const cachedForecastsRaw = sessionStorage.getItem('vibra-forecasts');
+        if (cachedForecastsRaw) {
+            const allForecasts = JSON.parse(cachedForecastsRaw);
+            if (allForecasts[siteId]) {
+                setForecast(allForecasts[siteId]);
                 setIsForecastLoading(false);
+                return;
             }
         }
-        fetchForecast();
-    }, [kpiData, siteId]);
+        
+        fetchAndCacheForecast();
+
+    }, [kpiData, siteId, fetchAndCacheForecast]);
+
 
     const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 
@@ -173,12 +200,18 @@ export function SingleSiteDashboard({ siteId }: { siteId: SiteId }) {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Pronóstico Ventas (Mes)</CardTitle>
-                    {forecast && (
-                        <UITooltip><UITooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-pointer" /></UITooltipTrigger><UITooltipContent><p className="max-w-xs">{forecast.reasoning}</p></UITooltipContent></UITooltip>
-                    )}
+                    <div className="flex items-center gap-1">
+                        {forecast && (
+                            <UITooltip><UITooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-pointer" /></UITooltipTrigger><UITooltipContent><p className="max-w-xs">{forecast.reasoning}</p></UITooltipContent></UITooltip>
+                        )}
+                         <Button variant="ghost" size="icon" onClick={() => fetchAndCacheForecast()} disabled={isRecalculating}>
+                            {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                            <span className="sr-only">Recalcular Pronóstico</span>
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    {isForecastLoading ? (
+                    {isForecastLoading && !forecast ? (
                         <div className="flex items-center gap-2 pt-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Calculando...</span></div>
                     ) : (
                         <div className="text-2xl font-bold">{formatCurrency(forecast?.forecast || 0)}</div>

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Site, SiteId, DailyReport } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
-import { Info, Loader2, Pencil } from 'lucide-react';
+import { Info, Loader2, Pencil, RefreshCw } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { getDay, getDate, getDaysInMonth } from 'date-fns';
 import { useForm } from 'react-hook-form';
@@ -83,6 +83,7 @@ export function GlobalDashboard() {
   const [isKpiLoading, setIsKpiLoading] = useState(true);
   const [forecasts, setForecasts] = useState<Record<SiteId, GenerateSalesForecastOutput | null>>({});
   const [isForecastLoading, setIsForecastLoading] = useState(true);
+  const [isRecalculating, setIsRecalculating] = useState(false);
 
   const { toast } = useToast();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -93,6 +94,50 @@ export function GlobalDashboard() {
   });
 
   const siteMap = useMemo(() => new Map(Object.values(kpiData).map(s => [s.id, s.name])), [kpiData]);
+
+  const fetchAndCacheForecasts = React.useCallback(async () => {
+    if (Object.keys(kpiData).length === 0) return;
+    
+    setIsForecastLoading(true);
+    setIsRecalculating(true);
+    
+    try {
+      const sitesToFetch = Object.keys(kpiData) as SiteId[];
+      const monthProgress = calculateMonthProgress(new Date());
+
+      const forecastPromises = sitesToFetch.map(async (siteId) => {
+         const reportsRef = collection(db, 'sites', siteId, 'daily-reports');
+         const q = query(reportsRef, orderBy('date', 'desc'), limit(7));
+         const querySnapshot = await getDocs(q);
+         const historicalRevenue = querySnapshot.docs.map(doc => (doc.data() as DailyReport).newRevenue);
+
+        return generateSalesForecast({
+          historicalRevenue: historicalRevenue,
+          currentMonthRevenue: kpiData[siteId].revenue,
+          ...monthProgress,
+        }).catch(err => {
+          console.error(`Error fetching forecast for ${siteId}:`, err);
+          return null;
+        })
+      });
+      const results = await Promise.all(forecastPromises);
+      
+      const newForecasts: Record<SiteId, GenerateSalesForecastOutput | null> = {};
+      sitesToFetch.forEach((siteId, index) => {
+          newForecasts[siteId] = results[index] as GenerateSalesForecastOutput;
+      });
+
+      sessionStorage.setItem('vibra-forecasts', JSON.stringify(newForecasts));
+      setForecasts(newForecasts);
+
+    } catch (error) {
+      console.error("Failed to generate forecasts:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo generar el pronóstico.' });
+    } finally {
+      setIsForecastLoading(false);
+      setIsRecalculating(false);
+    }
+  }, [kpiData, toast]);
 
   // Fetch KPI data in real-time
   useEffect(() => {
@@ -108,47 +153,18 @@ export function GlobalDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // Generate Forecasts
+  // Check for cached forecasts on mount, or fetch new ones
   useEffect(() => {
     if (Object.keys(kpiData).length === 0) return;
-
-    async function fetchForecasts() {
-      setIsForecastLoading(true);
-      try {
-        const sitesToFetch = Object.keys(kpiData) as SiteId[];
-        const monthProgress = calculateMonthProgress(new Date());
-
-        const forecastPromises = sitesToFetch.map(async (siteId) => {
-           const reportsRef = collection(db, 'sites', siteId, 'daily-reports');
-           const q = query(reportsRef, orderBy('date', 'desc'), limit(7));
-           const querySnapshot = await getDocs(q);
-           const historicalRevenue = querySnapshot.docs.map(doc => (doc.data() as DailyReport).newRevenue);
-
-          return generateSalesForecast({
-            historicalRevenue: historicalRevenue,
-            currentMonthRevenue: kpiData[siteId].revenue,
-            ...monthProgress,
-          }).catch(err => {
-            console.error(`Error fetching forecast for ${siteId}:`, err);
-            return null;
-          })
-        });
-        const results = await Promise.all(forecastPromises);
-        
-        const newForecasts: Record<SiteId, GenerateSalesForecastOutput | null> = {};
-        sitesToFetch.forEach((siteId, index) => {
-            newForecasts[siteId] = results[index] as GenerateSalesForecastOutput;
-        });
-        setForecasts(newForecasts);
-
-      } catch (error) {
-        console.error("Failed to generate forecasts:", error);
-      } finally {
+    const cachedForecasts = sessionStorage.getItem('vibra-forecasts');
+    if (cachedForecasts) {
+        setForecasts(JSON.parse(cachedForecasts));
         setIsForecastLoading(false);
-      }
+    } else {
+        fetchAndCacheForecasts();
     }
-    fetchForecasts();
-  }, [kpiData]);
+  }, [kpiData, fetchAndCacheForecasts]);
+
 
   const handleOpenEditModal = (siteId: SiteId) => {
     setEditingSite(siteId);
@@ -216,9 +232,13 @@ export function GlobalDashboard() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Pronóstico Ventas (Global)</CardTitle>
+                    <Button variant="ghost" size="icon" onClick={() => fetchAndCacheForecasts()} disabled={isRecalculating}>
+                      {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                      <span className="sr-only">Recalcular Pronóstico</span>
+                    </Button>
                 </CardHeader>
                 <CardContent>
-                    {isForecastLoading ? (
+                    {isForecastLoading && Object.keys(forecasts).length === 0 ? (
                         <div className="flex items-center gap-2 pt-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Calculando...</span></div>
                     ) : (
                         <div className="text-2xl font-bold">{formatCurrency(globalSummary.salesForecast)}</div>
