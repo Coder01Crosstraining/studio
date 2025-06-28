@@ -69,7 +69,7 @@ const navItems = [
   {
     href: "/management",
     icon: UserCog,
-    label: "Gestión",
+    label: "Gestión Usuarios",
     roles: ["CEO"],
   }
 ];
