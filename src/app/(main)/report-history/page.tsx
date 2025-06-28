@@ -12,7 +12,7 @@ import { Eye, Loader2 } from 'lucide-react';
 import type { DailyReport, Site, SiteId } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
-import { collection, query, getDocs, orderBy, collectionGroup } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 
 export default function ReportHistoryPage() {
   const { role, user } = useAuth();
@@ -33,11 +33,18 @@ export default function ReportHistoryPage() {
                 const sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
                 setSites(sitesData);
                 
-                const reportsQuery = query(collectionGroup(db, 'daily-reports'), orderBy('date', 'desc'));
-                const reportsSnapshot = await getDocs(reportsQuery);
+                const allReports: DailyReport[] = [];
+                for (const site of sitesData) {
+                    const reportsRef = collection(db, 'sites', site.id, 'daily-reports');
+                    const q = query(reportsRef, orderBy('date', 'desc'));
+                    const reportsSnapshot = await getDocs(q);
+                    reportsSnapshot.forEach(doc => {
+                        allReports.push({ id: doc.id, ...doc.data() } as DailyReport);
+                    });
+                }
                 
-                const fetchedReports = reportsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyReport));
-                setReports(fetchedReports);
+                allReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                setReports(allReports);
 
             } else { // Site Leader
                 const reportsRef = collection(db, 'sites', user.siteId!, 'daily-reports');
