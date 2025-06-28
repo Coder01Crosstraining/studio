@@ -366,14 +366,25 @@ export default function DashboardPage() {
             <CardContent>
               <Table>
                 <TableHeader><TableRow>
-                    <TableHead>Sede</TableHead><TableHead className="text-right">Ventas a la Fecha</TableHead><TableHead className="text-right">Meta del Mes</TableHead><TableHead className="text-right">Pronóstico Ventas</TableHead>
-                    <TableHead className="text-right">Ticket Promedio</TableHead><TableHead className="text-right">Retención</TableHead><TableHead className="text-right">NPS</TableHead><TableHead className="text-right">Acciones</TableHead>
+                    <TableHead>Sede</TableHead>
+                    <TableHead className="text-right">Ventas a la Fecha</TableHead>
+                    <TableHead className="text-right">Meta del Mes</TableHead>
+                    <TableHead className="text-right">Cumplimiento (%)</TableHead>
+                    <TableHead className="text-right">Pronóstico Ventas</TableHead>
+                    <TableHead className="text-right">Ticket Promedio</TableHead>
+                    <TableHead className="text-right">Retención</TableHead>
+                    <TableHead className="text-right">NPS</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
-                  {Object.entries(kpiData).map(([siteId, data]) => (
+                  {Object.entries(kpiData).map(([siteId, data]) => {
+                    const goalCompletion = data.monthlyGoal > 0 ? (data.revenue / data.monthlyGoal) * 100 : 0;
+                    return (
                     <TableRow key={siteId}>
-                      <TableCell className="font-medium">{siteMap.get(siteId as SiteId) || siteId}</TableCell><TableCell className="text-right">{formatCurrency(data.revenue)}</TableCell>
+                      <TableCell className="font-medium">{siteMap.get(siteId as SiteId) || siteId}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(data.revenue)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(data.monthlyGoal)}</TableCell>
+                      <TableCell className="text-right font-medium">{goalCompletion.toFixed(1)}%</TableCell>
                       <TableCell className="text-right">
                         {isForecastLoading && !forecasts[siteId as SiteId] ? ( <div className="flex justify-end"><Loader2 className="h-4 w-4 animate-spin" /></div> ) : (
                            <div className="flex items-center justify-end gap-1">
@@ -384,10 +395,13 @@ export default function DashboardPage() {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">{formatCurrency(data.averageTicket)}</TableCell><TableCell className="text-right">{data.retention.toFixed(1)}%</TableCell><TableCell className="text-right">{data.nps.toFixed(1)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(data.averageTicket)}</TableCell>
+                      <TableCell className="text-right">{data.retention.toFixed(1)}%</TableCell>
+                      <TableCell className="text-right">{data.nps.toFixed(1)}</TableCell>
                       <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleOpenEditModal(siteId as SiteId)}><Pencil className="h-4 w-4" /></Button></TableCell>
                     </TableRow>
-                  ))}
+                  );
+                })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -409,5 +423,3 @@ export default function DashboardPage() {
     </TooltipProvider>
   );
 }
-
-    
