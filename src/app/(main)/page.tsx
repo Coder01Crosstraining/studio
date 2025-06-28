@@ -9,7 +9,7 @@ import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Site, SiteId, DailyReport } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
-import { Info, Loader2, Pencil } from 'lucide-react';
+import { Info, Loader2, Pencil, Menu } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { subDays, format, getDay, getDate, getDaysInMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -249,7 +249,7 @@ export default function DashboardPage() {
   };
 
   const dashboardTitle = useMemo(() => {
-    if (role === 'SiteLeader') return `Panel de Sede: ${user?.name}`;
+    if (role === 'SiteLeader') return `Panel de Sede`;
     if (selectedSite === 'global') return "Panel Global";
     return `Panel de Sede: ${siteMap.get(selectedSite) || selectedSite}`;
   }, [selectedSite, siteMap, role, user]);
@@ -281,12 +281,12 @@ export default function DashboardPage() {
   
   return (
     <TooltipProvider>
-    <div className="w-full space-y-4 p-4 pt-6 md:p-8">
+    <div className="w-full space-y-4">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">{dashboardTitle}</h2>
         {role === 'CEO' && (
           <Select onValueChange={(value: SiteId | 'global') => setSelectedSite(value)} defaultValue="global">
-            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
+            <SelectTrigger className="w-full md:w-[200px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="global">Resumen Global</SelectItem>
               {sites.map(site => <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>)}
@@ -486,5 +486,3 @@ export default function DashboardPage() {
     </TooltipProvider>
   );
 }
-
-    
