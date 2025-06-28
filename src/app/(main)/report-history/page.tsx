@@ -12,7 +12,7 @@ import { Eye, Loader2 } from 'lucide-react';
 import type { DailyReport, Site, SiteId } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 
 export default function ReportHistoryPage() {
   const { role, user } = useAuth();
@@ -30,21 +30,32 @@ export default function ReportHistoryPage() {
         try {
             if (role === 'CEO') {
                 const sitesSnapshot = await getDocs(collection(db, 'sites'));
-                setSites(sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site)));
-            }
+                const sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
+                setSites(sitesData);
+                
+                const allReportsPromises = sitesData.map(site => {
+                    const reportsRef = collection(db, 'sites', site.id, 'daily-reports');
+                    return getDocs(query(reportsRef, orderBy('date', 'desc')));
+                });
+                
+                const allReportsSnapshots = await Promise.all(allReportsPromises);
+                const fetchedReports: DailyReport[] = [];
+                allReportsSnapshots.forEach(snapshot => {
+                    snapshot.docs.forEach(doc => {
+                       fetchedReports.push({ id: doc.id, ...doc.data() } as DailyReport)
+                    });
+                });
 
-            const reportsRef = collection(db, 'daily-reports');
-            let q;
+                fetchedReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                setReports(fetchedReports);
 
-            if (role === 'CEO') {
-                q = query(reportsRef, orderBy('date', 'desc'));
-            } else {
-                q = query(reportsRef, where('siteId', '==', user.siteId), orderBy('date', 'desc'));
+            } else { // Site Leader
+                const reportsRef = collection(db, 'sites', user.siteId!, 'daily-reports');
+                const q = query(reportsRef, orderBy('date', 'desc'));
+                const querySnapshot = await getDocs(q);
+                const fetchedReports = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyReport));
+                setReports(fetchedReports);
             }
-            
-            const querySnapshot = await getDocs(q);
-            const fetchedReports = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyReport));
-            setReports(fetchedReports);
         } catch (error) {
             console.error("Error fetching reports", error);
         } finally {
@@ -166,5 +177,3 @@ export default function ReportHistoryPage() {
     </div>
   );
 }
-
-    

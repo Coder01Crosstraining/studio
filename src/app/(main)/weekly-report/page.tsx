@@ -58,8 +58,9 @@ export default function DailyReportPage() {
     setIsLoading(true);
 
     try {
-        // 1. Add new daily report
-        await addDoc(collection(db, "daily-reports"), {
+        // 1. Add new daily report to subcollection within the site
+        const reportCollectionRef = collection(db, "sites", user.siteId, "daily-reports");
+        await addDoc(reportCollectionRef, {
             ...values,
             date: format(values.date, 'yyyy-MM-dd'),
             siteId: user.siteId,
@@ -181,5 +182,3 @@ export default function DailyReportPage() {
     </div>
   );
 }
-
-    

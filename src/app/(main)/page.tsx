@@ -22,7 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, getDocs, limit, orderBy } from 'firebase/firestore';
 
 const chartConfig = {
   revenue: { label: 'Ingresos', color: 'hsl(var(--chart-1))' },
@@ -143,8 +143,8 @@ export default function DashboardPage() {
     if (isKpiLoading || selectedSite === 'global') return;
     
     const fetchDailyData = async (siteId: SiteId) => {
-      const reportsRef = collection(db, 'daily-reports');
-      const q = query(reportsRef, where('siteId', '==', siteId), orderBy('date', 'desc'), limit(14));
+      const reportsRef = collection(db, 'sites', siteId, 'daily-reports');
+      const q = query(reportsRef, orderBy('date', 'desc'), limit(14));
       const querySnapshot = await getDocs(q);
       const reports = querySnapshot.docs.map(doc => doc.data() as DailyReport).reverse();
 
@@ -183,8 +183,8 @@ export default function DashboardPage() {
         const monthProgress = calculateMonthProgress(new Date());
 
         const forecastPromises = sitesToFetch.map(async (siteId) => {
-           const reportsRef = collection(db, 'daily-reports');
-           const q = query(reportsRef, where('siteId', '==', siteId), orderBy('date', 'desc'), limit(7));
+           const reportsRef = collection(db, 'sites', siteId, 'daily-reports');
+           const q = query(reportsRef, orderBy('date', 'desc'), limit(7));
            const querySnapshot = await getDocs(q);
            const historicalRevenue = querySnapshot.docs.map(doc => (doc.data() as DailyReport).newRevenue);
 
