@@ -19,6 +19,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, getDocs, limit, orderBy } from 'firebase/firestore';
@@ -248,9 +249,10 @@ export default function DashboardPage() {
   };
 
   const dashboardTitle = useMemo(() => {
+    if (role === 'SiteLeader') return `Panel de Sede: ${user?.name}`;
     if (selectedSite === 'global') return "Panel Global";
     return `Panel de Sede: ${siteMap.get(selectedSite) || selectedSite}`;
-  }, [selectedSite, siteMap]);
+  }, [selectedSite, siteMap, role, user]);
   
   const currentKpis = selectedSite !== 'global' ? kpiData[selectedSite] : null;
   const currentForecast = selectedSite !== 'global' ? forecasts[selectedSite] : null;
@@ -368,7 +370,7 @@ export default function DashboardPage() {
                     return (
                         <Card key={siteId}>
                             <CardHeader>
-                                <div className="flex items-start justify-between">
+                                <div className="flex items-center justify-between">
                                     <div>
                                         <CardTitle className="text-lg">{siteMap.get(siteId as SiteId) || siteId}</CardTitle>
                                         <CardDescription>
@@ -422,48 +424,50 @@ export default function DashboardPage() {
                     <CardTitle>Comparación de KPIs entre Sedes</CardTitle>
                     <CardDescription>Un resumen de los indicadores clave de todas las sedes.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader><TableRow>
-                        <TableHead>Sede</TableHead>
-                        <TableHead className="text-right">Ventas a la Fecha</TableHead>
-                        <TableHead className="text-right">Meta del Mes</TableHead>
-                        <TableHead className="text-right">Cumplimiento (%)</TableHead>
-                        <TableHead className="text-right">Pronóstico Ventas</TableHead>
-                        <TableHead className="text-right">Ticket Promedio</TableHead>
-                        <TableHead className="text-right">Retención</TableHead>
-                        <TableHead className="text-right">NPS</TableHead>
-                        <TableHead className="text-right">Acciones</TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {Object.entries(kpiData).map(([siteId, data]) => {
-                        const goalCompletion = data.monthlyGoal > 0 ? (data.revenue / data.monthlyGoal) * 100 : 0;
-                        const forecast = forecasts[siteId as SiteId];
-                        return (
-                        <TableRow key={siteId}>
-                          <TableCell className="font-medium">{siteMap.get(siteId as SiteId) || siteId}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(data.revenue)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(data.monthlyGoal)}</TableCell>
-                          <TableCell className="text-right font-medium">{goalCompletion.toFixed(1)}%</TableCell>
-                          <TableCell className="text-right">
-                            {isForecastLoading && !forecasts[siteId as SiteId] ? ( <div className="flex justify-end"><Loader2 className="h-4 w-4 animate-spin" /></div> ) : (
-                               <div className="flex items-center justify-end gap-1">
-                                {formatCurrency(forecasts[siteId as SiteId]?.forecast || 0)}
-                                <UITooltip><UITooltipTrigger asChild><Info className="h-3 w-3 text-muted-foreground cursor-pointer" /></UITooltipTrigger>
-                                  <UITooltipContent align="end"><p className="max-w-xs">{forecasts[siteId as SiteId]?.reasoning}</p></UITooltipContent>
-                                </UITooltip>
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">{formatCurrency(data.averageTicket)}</TableCell>
-                          <TableCell className="text-right">{data.retention.toFixed(1)}%</TableCell>
-                          <TableCell className="text-right">{data.nps.toFixed(1)}</TableCell>
-                          <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleOpenEditModal(siteId as SiteId)}><Pencil className="h-4 w-4" /></Button></TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    </TableBody>
-                  </Table>
+                <CardContent className="pt-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader><TableRow>
+                          <TableHead className="min-w-[150px]">Sede</TableHead>
+                          <TableHead className="text-right min-w-[150px]">Ventas a la Fecha</TableHead>
+                          <TableHead className="text-right min-w-[150px]">Meta del Mes</TableHead>
+                          <TableHead className="text-right min-w-[150px]">Cumplimiento (%)</TableHead>
+                          <TableHead className="text-right min-w-[150px]">Pronóstico Ventas</TableHead>
+                          <TableHead className="text-right min-w-[150px]">Ticket Promedio</TableHead>
+                          <TableHead className="text-right min-w-[120px]">Retención</TableHead>
+                          <TableHead className="text-right min-w-[120px]">NPS</TableHead>
+                          <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow></TableHeader>
+                      <TableBody>
+                        {Object.entries(kpiData).map(([siteId, data]) => {
+                          const goalCompletion = data.monthlyGoal > 0 ? (data.revenue / data.monthlyGoal) * 100 : 0;
+                          const forecast = forecasts[siteId as SiteId];
+                          return (
+                          <TableRow key={siteId}>
+                            <TableCell className="font-medium">{siteMap.get(siteId as SiteId) || siteId}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(data.revenue)}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(data.monthlyGoal)}</TableCell>
+                            <TableCell className="text-right font-medium">{goalCompletion.toFixed(1)}%</TableCell>
+                            <TableCell className="text-right">
+                              {isForecastLoading && !forecasts[siteId as SiteId] ? ( <div className="flex justify-end"><Loader2 className="h-4 w-4 animate-spin" /></div> ) : (
+                                <div className="flex items-center justify-end gap-1">
+                                  {formatCurrency(forecasts[siteId as SiteId]?.forecast || 0)}
+                                  <UITooltip><UITooltipTrigger asChild><Info className="h-3 w-3 text-muted-foreground cursor-pointer" /></UITooltipTrigger>
+                                    <UITooltipContent align="end"><p className="max-w-xs">{forecasts[siteId as SiteId]?.reasoning}</p></UITooltipContent>
+                                  </UITooltip>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">{formatCurrency(data.averageTicket)}</TableCell>
+                            <TableCell className="text-right">{data.retention.toFixed(1)}%</TableCell>
+                            <TableCell className="text-right">{data.nps.toFixed(1)}</TableCell>
+                            <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleOpenEditModal(siteId as SiteId)}><Pencil className="h-4 w-4" /></Button></TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </CardContent>
             </Card>
         </>
