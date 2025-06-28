@@ -29,6 +29,14 @@ const userSchema = z.object({
   name: z.string().min(3, "El nombre es muy corto."),
   role: z.enum(["CEO", "SiteLeader"], { required_error: "El rol es obligatorio." }),
   siteId: z.string().optional().nullable(),
+}).refine(data => {
+    if (data.role === 'SiteLeader') {
+        return !!data.siteId;
+    }
+    return true;
+}, {
+    message: "Se debe asignar una sede para el Líder de Sede.",
+    path: ["siteId"],
 });
 
 function SiteManagement({ sites, loading, refetchSites }: { sites: Site[], loading: boolean, refetchSites: () => void }) {
@@ -183,7 +191,7 @@ function UserManagement({ sites, users, loading, refetchUsers }: { sites: Site[]
             await updateDoc(userRef, {
                 name: values.name,
                 role: values.role,
-                siteId: values.role === 'CEO' ? null : values.siteId,
+                siteId: values.role === 'CEO' ? null : (values.siteId || null),
             });
             toast({ title: "Usuario Actualizado", description: "Los datos del usuario han sido actualizados." });
             refetchUsers();
@@ -326,7 +334,7 @@ export default function ManagementPage() {
   }
 
   return (
-    <div className="w-full space-y-4 p-4 pt-6 md:p-8">
+    <div className="container mx-auto w-full space-y-4 p-4 pt-6 md:p-8">
       <h2 className="text-3xl font-bold tracking-tight">Gestión de Usuarios y Sedes</h2>
       <Tabs defaultValue="sites" className="w-full">
         <TabsList>
