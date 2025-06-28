@@ -371,9 +371,9 @@ export default function DashboardPage() {
                     <TableHead className="text-right">Meta del Mes</TableHead>
                     <TableHead className="text-right">Cumplimiento (%)</TableHead>
                     <TableHead className="text-right">Pronóstico Ventas</TableHead>
-                    <TableHead className="text-right">Ticket Promedio</TableHead>
-                    <TableHead className="text-right">Retención</TableHead>
-                    <TableHead className="text-right">NPS</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">Ticket Promedio</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">Retención</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">NPS</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
@@ -395,9 +395,9 @@ export default function DashboardPage() {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">{formatCurrency(data.averageTicket)}</TableCell>
-                      <TableCell className="text-right">{data.retention.toFixed(1)}%</TableCell>
-                      <TableCell className="text-right">{data.nps.toFixed(1)}</TableCell>
+                      <TableCell className="text-right hidden md:table-cell">{formatCurrency(data.averageTicket)}</TableCell>
+                      <TableCell className="text-right hidden md:table-cell">{data.retention.toFixed(1)}%</TableCell>
+                      <TableCell className="text-right hidden md:table-cell">{data.nps.toFixed(1)}</TableCell>
                       <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleOpenEditModal(siteId as SiteId)}><Pencil className="h-4 w-4" /></Button></TableCell>
                     </TableRow>
                   );
