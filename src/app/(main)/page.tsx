@@ -19,7 +19,6 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, getDocs, limit, orderBy } from 'firebase/firestore';
@@ -71,7 +70,7 @@ function calculateMonthProgress(today: Date) {
       effectiveBusinessDaysRemaining += 0;
     } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) {
       effectiveBusinessDaysRemaining += 0.5;
-    } else {
+    } else { // Weekday
       effectiveBusinessDaysRemaining += 1;
     }
   }
@@ -423,7 +422,7 @@ export default function DashboardPage() {
                     <CardTitle>Comparación de KPIs entre Sedes</CardTitle>
                     <CardDescription>Un resumen de los indicadores clave de todas las sedes.</CardDescription>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent>
                   <Table>
                     <TableHeader><TableRow>
                         <TableHead>Sede</TableHead>
