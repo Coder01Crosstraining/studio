@@ -12,7 +12,7 @@ import { Eye, Loader2 } from 'lucide-react';
 import type { DailyReport, Site, SiteId } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, QuerySnapshot, DocumentData } from 'firebase/firestore';
 
 export default function ReportHistoryPage() {
   const { role, user } = useAuth();
@@ -28,31 +28,35 @@ export default function ReportHistoryPage() {
         setIsLoading(true);
 
         try {
+            const reportPromises: Promise<QuerySnapshot<DocumentData>>[] = [];
+            
             if (role === 'CEO') {
                 const sitesSnapshot = await getDocs(collection(db, 'sites'));
                 const sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
                 setSites(sitesData);
                 
-                const allReports: DailyReport[] = [];
-                for (const site of sitesData) {
+                sitesData.forEach(site => {
                     const reportsRef = collection(db, 'sites', site.id, 'daily-reports');
-                    const q = query(reportsRef, orderBy('date', 'desc'));
-                    const reportsSnapshot = await getDocs(q);
-                    reportsSnapshot.forEach(doc => {
-                        allReports.push({ id: doc.id, ...doc.data() } as DailyReport);
-                    });
+                    reportPromises.push(getDocs(query(reportsRef, orderBy('date', 'desc'))));
+                });
+            } else { 
+                if (user.siteId) {
+                    const reportsRef = collection(db, 'sites', user.siteId, 'daily-reports');
+                    reportPromises.push(getDocs(query(reportsRef, orderBy('date', 'desc'))));
                 }
-                
-                allReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                setReports(allReports);
-
-            } else { // Site Leader
-                const reportsRef = collection(db, 'sites', user.siteId!, 'daily-reports');
-                const q = query(reportsRef, orderBy('date', 'desc'));
-                const querySnapshot = await getDocs(q);
-                const fetchedReports = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyReport));
-                setReports(fetchedReports);
             }
+
+            const reportSnapshots = await Promise.all(reportPromises);
+            const allReports: DailyReport[] = [];
+            reportSnapshots.forEach(snapshot => {
+                snapshot.forEach(doc => {
+                    allReports.push({ id: doc.id, ...doc.data() } as DailyReport);
+                });
+            });
+
+            allReports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setReports(allReports);
+
         } catch (error) {
             console.error("Error fetching reports", error);
         } finally {
@@ -65,13 +69,13 @@ export default function ReportHistoryPage() {
   
   const siteMap = React.useMemo(() => new Map(sites.map(s => [s.id, s.name])), [sites]);
 
-  const filteredReports = reports.filter(r => {
+  const filteredReports = React.useMemo(() => {
     if (role === 'CEO') {
-        if (selectedSite === 'global') return true;
-        return r.siteId === selectedSite;
+        if (selectedSite === 'global') return reports;
+        return reports.filter(r => r.siteId === selectedSite);
     }
-    return r.siteId === user?.siteId;
-  });
+    return reports;
+  }, [reports, role, selectedSite]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 

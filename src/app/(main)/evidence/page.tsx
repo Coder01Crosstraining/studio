@@ -17,12 +17,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, PlusCircle, Eye, FileText, Image as ImageIcon } from 'lucide-react';
+import { Loader2, PlusCircle, Eye, FileText } from 'lucide-react';
 import type { EvidenceDocument, SiteId, EvidenceCategory, Site } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db, storage } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, collectionGroup } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, serverTimestamp, orderBy, QuerySnapshot, DocumentData } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const evidenceSchema = z.object({
@@ -69,37 +69,40 @@ export default function EvidencePage() {
         setIsFetching(true);
         
         try {
+            const evidencePromises: Promise<QuerySnapshot<DocumentData>>[] = [];
+            
             if (role === 'CEO') {
                 const sitesSnapshot = await getDocs(collection(db, 'sites'));
-                setSites(sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site)));
+                const sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
+                setSites(sitesData);
                 
-                const evidenceQuery = query(collectionGroup(db, 'evidence'), orderBy('uploadedAt', 'desc'));
-                const querySnapshot = await getDocs(evidenceQuery);
-                const fetchedDocs = querySnapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return { 
-                        id: doc.id,
-                        ...data,
-                        uploadedAt: data.uploadedAt.toDate()
-                    } as EvidenceDocument;
+                sitesData.forEach(site => {
+                    const evidenceRef = collection(db, 'sites', site.id, 'evidence');
+                    evidencePromises.push(getDocs(query(evidenceRef, orderBy('uploadedAt', 'desc'))));
                 });
-                setDocuments(fetchedDocs);
-
             } else { // Site Leader
-                const evidenceRef = collection(db, 'sites', user.siteId!, 'evidence');
-                const q = query(evidenceRef, orderBy('uploadedAt', 'desc'));
-                
-                const querySnapshot = await getDocs(q);
-                const fetchedDocs = querySnapshot.docs.map(doc => {
+                 if (user.siteId) {
+                    const evidenceRef = collection(db, 'sites', user.siteId, 'evidence');
+                    evidencePromises.push(getDocs(query(evidenceRef, orderBy('uploadedAt', 'desc'))));
+                 }
+            }
+
+            const evidenceSnapshots = await Promise.all(evidencePromises);
+            const allDocs: EvidenceDocument[] = [];
+            evidenceSnapshots.forEach(snapshot => {
+                snapshot.forEach(doc => {
                     const data = doc.data();
-                    return { 
+                     allDocs.push({ 
                         id: doc.id,
                         ...data,
                         uploadedAt: data.uploadedAt.toDate()
-                    } as EvidenceDocument;
+                    } as EvidenceDocument);
                 });
-                setDocuments(fetchedDocs);
-            }
+            });
+
+            allDocs.sort((a, b) => (b.uploadedAt as any) - (a.uploadedAt as any));
+            setDocuments(allDocs);
+
         } catch (error) {
             console.error("Error fetching documents: ", error);
             toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar los documentos.' });
@@ -139,7 +142,7 @@ export default function EvidencePage() {
         const docRef = await addDoc(evidenceCollectionRef, newDocData);
         
         const newDocument = { ...newDocData, id: docRef.id, uploadedAt: new Date() } as EvidenceDocument;
-        setDocuments(prev => [newDocument, ...prev]);
+        setDocuments(prev => [newDocument, ...prev].sort((a, b) => (b.uploadedAt as any) - (a.uploadedAt as any)));
 
         toast({ title: 'Éxito', description: 'Tu documento ha sido subido correctamente.' });
         setIsFormOpen(false);
@@ -152,13 +155,13 @@ export default function EvidencePage() {
     }
   }
 
-  const filteredDocuments = documents.filter(p => {
+  const filteredDocuments = React.useMemo(() => {
     if (role === 'CEO') {
-      if (selectedSite === 'global') return true;
-      return p.siteId === selectedSite;
+      if (selectedSite === 'global') return documents;
+      return documents.filter(p => p.siteId === selectedSite);
     }
-    return p.siteId === user?.siteId;
-  });
+    return documents;
+  }, [documents, role, selectedSite]);
 
   return (
     <div className="w-full space-y-4">
