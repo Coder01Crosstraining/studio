@@ -22,7 +22,7 @@ import type { EvidenceDocument, SiteId, EvidenceCategory, Site } from '@/lib/typ
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db, storage } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, collectionGroup } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const evidenceSchema = z.object({
@@ -69,31 +69,37 @@ export default function EvidencePage() {
         setIsFetching(true);
         
         try {
-            // Fetch sites for CEO role
             if (role === 'CEO') {
                 const sitesSnapshot = await getDocs(collection(db, 'sites'));
                 setSites(sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site)));
-            }
-    
-            const evidenceRef = collection(db, 'evidence');
-            let q;
-    
-            if (role === 'CEO') {
-                q = query(evidenceRef, orderBy('uploadedAt', 'desc'));
-            } else {
-                q = query(evidenceRef, where('siteId', '==', user.siteId), orderBy('uploadedAt', 'desc'));
-            }
+                
+                const evidenceQuery = query(collectionGroup(db, 'evidence'), orderBy('uploadedAt', 'desc'));
+                const querySnapshot = await getDocs(evidenceQuery);
+                const fetchedDocs = querySnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return { 
+                        id: doc.id,
+                        ...data,
+                        uploadedAt: data.uploadedAt.toDate()
+                    } as EvidenceDocument;
+                });
+                setDocuments(fetchedDocs);
 
-            const querySnapshot = await getDocs(q);
-            const fetchedDocs = querySnapshot.docs.map(doc => {
-                const data = doc.data();
-                return { 
-                    id: doc.id,
-                    ...data,
-                    uploadedAt: data.uploadedAt.toDate()
-                } as EvidenceDocument;
-            });
-            setDocuments(fetchedDocs);
+            } else { // Site Leader
+                const evidenceRef = collection(db, 'sites', user.siteId!, 'evidence');
+                const q = query(evidenceRef, orderBy('uploadedAt', 'desc'));
+                
+                const querySnapshot = await getDocs(q);
+                const fetchedDocs = querySnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return { 
+                        id: doc.id,
+                        ...data,
+                        uploadedAt: data.uploadedAt.toDate()
+                    } as EvidenceDocument;
+                });
+                setDocuments(fetchedDocs);
+            }
         } catch (error) {
             console.error("Error fetching documents: ", error);
             toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar los documentos.' });
@@ -113,7 +119,7 @@ export default function EvidencePage() {
     
     try {
         const file = values.file[0];
-        const storageRef = ref(storage, `evidence/${user.siteId}/${Date.now()}_${file.name}`);
+        const storageRef = ref(storage, `sites/${user.siteId}/evidence/${Date.now()}_${file.name}`);
         await uploadBytes(storageRef, file);
         const fileUrl = await getDownloadURL(storageRef);
 
@@ -129,7 +135,8 @@ export default function EvidencePage() {
             uploadedAt: serverTimestamp(),
         };
 
-        const docRef = await addDoc(collection(db, 'evidence'), newDocData);
+        const evidenceCollectionRef = collection(db, 'sites', user.siteId, 'evidence');
+        const docRef = await addDoc(evidenceCollectionRef, newDocData);
         
         const newDocument = { ...newDocData, id: docRef.id, uploadedAt: new Date() } as EvidenceDocument;
         setDocuments(prev => [newDocument, ...prev]);
