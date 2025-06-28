@@ -388,7 +388,7 @@ export default function ManagementPage() {
   }
 
   return (
-    <div className="container mx-auto w-full space-y-4 p-4 pt-6 md:p-8">
+    <div className="w-full space-y-4">
       <h2 className="text-3xl font-bold tracking-tight">Gestión de Usuarios y Sedes</h2>
       <Tabs defaultValue="sites" className="w-full">
         <TabsList>

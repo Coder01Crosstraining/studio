@@ -3,16 +3,17 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { SidebarProvider, SidebarInset, useSidebar } from "@/components/ui/sidebar";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { FullPageLoader } from "@/components/loader";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function MobileHeader() {
   const { toggleSidebar } = useSidebar();
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4 md:hidden">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 md:hidden">
         <Button
           variant="outline"
           size="icon"
@@ -25,6 +26,24 @@ function MobileHeader() {
     </header>
   );
 }
+
+function MainContent({ children }: { children: React.ReactNode }) {
+    const { state, isMobile } = useSidebar();
+    const shouldBlur = state === 'expanded' && !isMobile;
+
+    return (
+        <div className={cn(
+            "flex flex-1 flex-col md:ml-[var(--sidebar-width-icon)] transition-all",
+            shouldBlur && "blur-sm pointer-events-none"
+        )}>
+            <MobileHeader />
+            <main className="flex-1 p-4 sm:p-6 lg:p-8">
+                {children}
+            </main>
+        </div>
+    )
+}
+
 
 export default function MainLayout({
   children,
@@ -46,16 +65,9 @@ export default function MainLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen bg-muted/20">
         <SidebarNav />
-        <div className="flex flex-1 flex-col">
-          <MobileHeader />
-          <SidebarInset>
-              <main className="flex flex-1 flex-col p-4 md:p-6 lg:p-8">
-                {children}
-              </main>
-          </SidebarInset>
-        </div>
+        <MainContent>{children}</MainContent>
       </div>
     </SidebarProvider>
   );
