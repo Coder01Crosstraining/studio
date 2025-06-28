@@ -34,32 +34,40 @@ const prompt = ai.definePrompt({
   name: 'generateSalesForecastPrompt',
   input: {schema: GenerateSalesForecastInputSchema},
   output: {schema: GenerateSalesForecastOutputSchema},
-  prompt: `Eres un analista financiero experto para una cadena de gimnasios en Colombia. Tu tarea es proporcionar un pronóstico de ventas para el mes actual basado en la fórmula que te proporciono.
+  prompt: `Eres un analista financiero experto para una cadena de gimnasios en Colombia. Tu tarea es proporcionar un pronóstico de ventas para el mes actual basado en los datos proporcionados.
 
-Analiza los datos de ventas y el progreso actual para proyectar las ventas totales del mes. Basa tu pronóstico EXCLUSIVAMENTE en los ingresos por ventas.
+**Regla crítica: SOLO puedes hacer una proyección si existen reportes diarios históricos. Si el arreglo de ingresos históricos está vacío, el pronóstico DEBE ser igual a las ventas actuales y el razonamiento debe explicar que no hay datos para proyectar.**
 
-Contexto del mes actual:
-- Días transcurridos en el mes: {{elapsedDaysInMonth}}
-- Días comerciales efectivos restantes en el mes: {{effectiveBusinessDaysRemaining}}
+**Datos de entrada:**
 - Ventas acumuladas hasta la fecha: COP {{currentMonthRevenue}}
-- Datos históricos de días anteriores (solo para referencia si aún no han pasado días): {{#each historicalRevenue}}COP {{this}}, {{/each}}
+- Ingresos de reportes diarios recientes: {{#if historicalRevenue}} [{{#each historicalRevenue}}COP {{this}}{{#unless @last}}, {{/unless}}{{/each}}] {{else}} (No hay reportes) {{/if}}
+- Días comerciales efectivos que han pasado: {{effectiveBusinessDaysPast}}
+- Días comerciales efectivos restantes: {{effectiveBusinessDaysRemaining}}
 
-Sigue estos pasos EXACTOS para tu cálculo:
+**Instrucciones de cálculo:**
 
-1.  Determina el "Promedio de Ventas Diario" a utilizar para la proyección.
-    *   **CASO A:** Si los "Días transcurridos en el mes" ({{elapsedDaysInMonth}}) es mayor que 0, calcula el promedio así: (Ventas acumuladas hasta la fecha / Días transcurridos en el mes).
-    *   **CASO B:** Si los "Días transcurridos en el mes" es 0 Y existen "Datos históricos", calcula el promedio de los "Datos históricos".
-    *   **CASO C:** Si los "Días transcurridos en el mes" es 0 Y NO existen "Datos históricos", el "Promedio de Ventas Diario" es 0. No es posible hacer una proyección.
+{{#if historicalRevenue}}
+**CASO 1: Hay reportes históricos. Se puede proyectar.**
 
-2.  Calcula las "Ventas Proyectadas" para el resto del mes. La fórmula es: ("Promedio de Ventas Diario" * Días comerciales efectivos restantes). Si el promedio es 0, las ventas proyectadas son 0.
+1.  **Calcular Promedio de Ventas Diario:**
+    *   Si \`{{effectiveBusinessDaysPast}}\` es mayor que 0, el promedio es \`{{currentMonthRevenue}} / {{effectiveBusinessDaysPast}}\`.
+    *   Si \`{{effectiveBusinessDaysPast}}\` es 0 (inicio del mes), calcula el promedio de \`historicalRevenue\`.
+2.  **Calcular Ventas Proyectadas:** \`Promedio de Ventas Diario * {{effectiveBusinessDaysRemaining}}\`.
+3.  **Calcular Pronóstico Total:** \`{{currentMonthRevenue}} + Ventas Proyectadas\`.
+4.  **Generar Respuesta:**
+    *   \`forecast\`: El valor del "Pronóstico Total".
+    *   \`reasoning\`: "Proyección basada en el rendimiento promedio hasta la fecha y los días comerciales restantes."
 
-3.  Calcula el "Pronóstico Total del Mes". La fórmula es: (Ventas acumuladas hasta la fecha + Ventas Proyectadas).
+{{else}}
+**CASO 2: No hay reportes históricos. NO se puede proyectar.**
 
-Basado en este cálculo, responde con el número final del pronóstico.
-Para el razonamiento, sigue estas reglas:
-*   Si usaste el **CASO A**, el razonamiento debe ser: "Calculado en base al promedio de ventas de los {{elapsedDaysInMonth}} días transcurridos y los días comerciales restantes."
-*   Si usaste el **CASO B**, el razonamiento debe ser: "Proyección basada en el rendimiento histórico y los días comerciales restantes, ya que el mes acaba de comenzar."
-*   Si usaste el **CASO C**, el razonamiento debe ser: "El pronóstico corresponde a las ventas actuales. No hay suficientes datos históricos o del mes en curso para realizar una proyección."
+1.  **Calcular Pronóstico Total:** El pronóstico es simplemente \`{{currentMonthRevenue}}\`.
+2.  **Generar Respuesta:**
+    *   \`forecast\`: El valor de \`{{currentMonthRevenue}}\`.
+    *   \`reasoning\`: "El pronóstico corresponde a las ventas actuales. No hay suficientes datos de reportes diarios para realizar una proyección precisa."
+{{/if}}
+
+Analiza los datos de entrada y sigue estrictamente las instrucciones para el caso que aplique. Proporciona tu respuesta en el formato JSON solicitado.
 `,
 });
 
