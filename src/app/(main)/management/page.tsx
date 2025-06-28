@@ -323,7 +323,7 @@ export default function ManagementPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl space-y-4 p-4 pt-6 md:p-8">
+    <div className="w-full space-y-4 p-4 pt-6 md:p-8">
       <h2 className="text-3xl font-bold tracking-tight">Gestión del Sistema</h2>
       <Tabs defaultValue="sites">
         <TabsList className="grid w-full grid-cols-2 max-w-md">
@@ -340,3 +340,5 @@ export default function ManagementPage() {
     </div>
   );
 }
+
+    

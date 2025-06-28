@@ -92,7 +92,7 @@ export default function DailyReportPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl space-y-4 p-4 pt-6 md:p-8">
+    <div className="w-full space-y-4 p-4 pt-6 md:p-8">
        <h2 className="text-3xl font-bold tracking-tight">Enviar Reporte Diario</h2>
       <Card>
         <CardHeader>
@@ -181,3 +181,5 @@ export default function DailyReportPage() {
     </div>
   );
 }
+
+    

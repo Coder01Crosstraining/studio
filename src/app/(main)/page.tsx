@@ -279,7 +279,7 @@ export default function DashboardPage() {
   
   return (
     <TooltipProvider>
-    <div className="mx-auto w-full max-w-screen-2xl space-y-4 p-4 pt-6 md:p-8">
+    <div className="w-full space-y-4 p-4 pt-6 md:p-8">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">{dashboardTitle}</h2>
         {role === 'CEO' && (
@@ -409,3 +409,5 @@ export default function DashboardPage() {
     </TooltipProvider>
   );
 }
+
+    
