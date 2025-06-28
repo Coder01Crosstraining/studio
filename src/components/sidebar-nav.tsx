@@ -96,7 +96,7 @@ export function SidebarNav() {
           className="h-auto w-full justify-start p-2 text-xl font-semibold group-data-[state=collapsed]:justify-center" 
           onClick={toggleSidebar}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" className="h-8 w-8 shrink-0 text-primary group-data-[state=expanded]:mr-2">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" className="h-8 w-8 shrink-0 text-primary">
             <rect width="256" height="256" fill="none" />
             <path d="M48,88H208V48a8,8,0,0,0-8-8H56a8,8,0,0,0-8,8Z" opacity="0.2" />
             <path d="M48,88H208v40a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8Z" opacity="0.2" />
@@ -107,7 +107,7 @@ export function SidebarNav() {
             <line x1="88" y1="40" x2="88" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
             <line x1="168" y1="40" x2="168" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
           </svg>
-          <span className="group-data-[state=collapsed]:hidden">VIBRA OS</span>
+          <span className="ml-2 group-data-[state=collapsed]:hidden">VIBRA OS</span>
         </Button>
       </SidebarHeader>
 
@@ -134,11 +134,11 @@ export function SidebarNav() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
              <Button variant="ghost" className="h-auto w-full justify-start p-2 group-data-[state=collapsed]:justify-center">
-                <Avatar className="h-8 w-8 group-data-[state=expanded]:mr-3">
+                <Avatar className="h-8 w-8">
                   <AvatarImage src={`https://i.pravatar.cc/150?u=${user?.email}`} />
                   <AvatarFallback>{user?.name?.charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1 text-left group-data-[state=collapsed]:hidden">
+                <div className="ml-3 flex-1 text-left group-data-[state=collapsed]:hidden">
                   <p className="truncate text-sm font-medium">{user?.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{user?.role}</p>
                 </div>
@@ -169,3 +169,5 @@ export function SidebarNav() {
     </Sidebar>
   );
 }
+
+    

@@ -168,7 +168,7 @@ const Sidebar = React.forwardRef<
           <SheetContent
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className="w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground"
             style={
               {
                 "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -218,13 +218,19 @@ const SidebarInset = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"main">
 >(({ className, ...props }, ref) => {
+  const { isMobile } = useSidebar();
+  if (isMobile) {
+    return <main ref={ref} className={cn("relative min-h-svh w-full flex-1 bg-background", className)} {...props} />;
+  }
+
   return (
     <main
       ref={ref}
       className={cn(
         "relative min-h-svh w-full flex-1 bg-background transition-all duration-200",
         "md:ml-[var(--sidebar-width-icon)]",
-        "peer-data-[state=expanded]:blur-sm peer-data-[state=expanded]:pointer-events-none",
+        "group-data-[state=expanded]/sidebar-wrapper:ml-[var(--sidebar-width)]",
+        "group-data-[state=expanded]/sidebar-wrapper:blur-sm group-data-[state=expanded]/sidebar-wrapper:pointer-events-none",
         className
       )}
       {...props}
@@ -455,3 +461,5 @@ export {
   SidebarSeparator,
   useSidebar,
 }
+
+    

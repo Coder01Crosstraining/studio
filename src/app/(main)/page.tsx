@@ -334,8 +334,8 @@ export default function DashboardPage() {
       </div>
 
       {selectedSite !== 'global' ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <Card className="lg:col-span-7">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
             <CardHeader><CardTitle>Ventas Diarias vs. Meta (Últimos 14 Días)</CardTitle></CardHeader>
             <CardContent className="pl-2">
                <ChartContainer config={chartConfig} className="h-[350px] w-full">
@@ -347,7 +347,7 @@ export default function DashboardPage() {
                </ChartContainer>
             </CardContent>
           </Card>
-          <Card className="lg:col-span-5">
+          <Card>
             <CardHeader><CardTitle>Nuevos Miembros vs. Miembros Perdidos (Últimos 14 Días)</CardTitle></CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[350px] w-full">
@@ -486,3 +486,5 @@ export default function DashboardPage() {
     </TooltipProvider>
   );
 }
+
+    
