@@ -11,7 +11,7 @@ import {
   Settings,
   History,
   FolderKanban,
-  UsersCog,
+  UserCog,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
@@ -68,7 +68,7 @@ const navItems = [
   },
   {
     href: "/management",
-    icon: UsersCog,
+    icon: UserCog,
     label: "Gestión",
     roles: ["CEO"],
   }
