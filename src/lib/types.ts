@@ -1,3 +1,5 @@
+import type { Timestamp } from 'firebase/firestore';
+
 export type UserRole = "CEO" | "SiteLeader";
 export type SiteId = "ciudadela" | "floridablanca" | "piedecuesta";
 
@@ -12,7 +14,11 @@ export interface User {
 export interface Site {
   id: SiteId;
   name: string;
-  revenueGoal: number;
+  revenue: number;
+  monthlyGoal: number;
+  retention: number;
+  nps: number;
+  averageTicket: number;
 }
 
 export interface DailyReport {
@@ -30,7 +36,7 @@ export interface DailyReport {
   dailyWin: string;
   dailyChallenge: string;
   lessonLearned: string;
-  submittedAt: Date;
+  submittedAt: Timestamp;
 }
 
 export type EmployeeRole = "Coach" | "SalesAdvisor";
@@ -46,7 +52,7 @@ export interface OneOnOneSession {
   mainWin: string;
   opportunityForImprovement: string;
   actionPlan: string;
-  createdAt: Date;
+  createdAt: Timestamp;
 }
 
 export type EvidenceCategory = "reunion" | "preventiva" | "correctiva";
@@ -57,9 +63,9 @@ export interface EvidenceDocument {
   leaderId: string;
   title: string;
   description: string;
-  fileUrl: string; // Will be a placeholder URL
+  fileUrl: string;
   fileName: string;
   fileType: "image" | "pdf";
   category: EvidenceCategory;
-  uploadedAt: Date;
+  uploadedAt: Timestamp;
 }

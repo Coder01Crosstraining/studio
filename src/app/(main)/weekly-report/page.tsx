@@ -18,6 +18,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { db } from '@/lib/firebase';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
 
 const reportSchema = z.object({
   date: z.date({ required_error: "Se requiere una fecha para el reporte." }),
@@ -32,7 +34,7 @@ const reportSchema = z.object({
   lessonLearned: z.string().min(10, "La lección aprendida debe tener al menos 10 caracteres.").max(500),
 });
 
-export default function WeeklyReportPage() {
+export default function DailyReportPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -41,12 +43,7 @@ export default function WeeklyReportPage() {
   const form = useForm<z.infer<typeof reportSchema>>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
-      newRevenue: undefined,
-      newMembers: undefined,
-      lostMembers: undefined,
-      renewalRate: undefined,
-      avgNPS: undefined,
-      coachSatisfaction: undefined,
+      date: new Date(),
       dailyWin: '',
       dailyChallenge: '',
       lessonLearned: '',
@@ -54,24 +51,44 @@ export default function WeeklyReportPage() {
   });
   
   async function onSubmit(values: z.infer<typeof reportSchema>) {
+    if (!user || !user.siteId) {
+        toast({ variant: "destructive", title: "Error", description: "No se pudo identificar al usuario o la sede." });
+        return;
+    }
     setIsLoading(true);
-    console.log({
-      ...values,
-      siteId: user?.siteId,
-      leaderId: user?.uid,
-      leaderName: user?.name,
-      submittedAt: new Date(),
-    });
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
 
-    toast({
-      title: "¡Éxito!",
-      description: "Tu reporte diario ha sido enviado.",
-    });
-    router.push('/');
-    setIsLoading(false);
+    try {
+        // 1. Add new daily report
+        await addDoc(collection(db, "daily-reports"), {
+            ...values,
+            date: format(values.date, 'yyyy-MM-dd'),
+            siteId: user.siteId,
+            leaderId: user.uid,
+            leaderName: user.name,
+            submittedAt: serverTimestamp(),
+        });
+
+        // 2. Update the site's total revenue
+        const siteRef = doc(db, "sites", user.siteId);
+        await updateDoc(siteRef, {
+            revenue: increment(values.newRevenue)
+        });
+
+        toast({
+            title: "¡Éxito!",
+            description: "Tu reporte diario ha sido enviado.",
+        });
+        router.push('/');
+    } catch (error) {
+        console.error("Error submitting report: ", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No se pudo enviar el reporte. Inténtalo de nuevo.",
+        });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (

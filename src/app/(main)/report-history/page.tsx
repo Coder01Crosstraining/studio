@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuth } from '@/lib/auth';
@@ -9,17 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Eye } from 'lucide-react';
+import { Eye, Loader2 } from 'lucide-react';
 import type { DailyReport, SiteId } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-// Mock Data for daily reports
-const mockReports: DailyReport[] = [
-  { id: 'rep1', siteId: 'ciudadela', leaderId: 'leader-ciudadela-456', leaderName: 'Maria Leader', date: '2024-07-22', newRevenue: 450000, newMembers: 4, lostMembers: 1, renewalRate: 95, avgNPS: 9.1, coachSatisfaction: 4.8, dailyWin: 'Se logró una venta corporativa con una empresa vecina.', dailyChallenge: 'El aire acondicionado de la zona de pesas falló por la tarde.', lessonLearned: 'Debemos revisar el mantenimiento preventivo de los equipos de climatización.', submittedAt: new Date('2024-07-22T18:00:00Z') },
-  { id: 'rep2', siteId: 'floridablanca', leaderId: 'leader-floridablanca-123', leaderName: 'Juan Leader', date: '2024-07-22', newRevenue: 600000, newMembers: 6, lostMembers: 0, renewalRate: 98, avgNPS: 9.5, coachSatisfaction: 4.9, dailyWin: 'Se superó la meta diaria de ventas en un 20%.', dailyChallenge: 'Hubo una queja por falta de casilleros disponibles en hora pico.', lessonLearned: 'Analizar la posibilidad de instalar más casilleros o promover su uso eficiente.', submittedAt: new Date('2024-07-22T19:00:00Z') },
-  { id: 'rep3', siteId: 'piedecuesta', leaderId: 'leader-piedecuesta-789', leaderName: 'Sofia Leader', date: '2024-07-22', newRevenue: 300000, newMembers: 3, lostMembers: 2, renewalRate: 90, avgNPS: 8.5, coachSatisfaction: 4.5, dailyWin: 'Un miembro antiguo renovó su plan anual gracias a un buen seguimiento.', dailyChallenge: 'Baja asistencia a la clase de yoga de la mañana.', lessonLearned: 'Promocionar más la clase de yoga en redes sociales y en el gimnasio.', submittedAt: new Date('2024-07-22T17:30:00Z') },
-  { id: 'rep4', siteId: 'ciudadela', leaderId: 'leader-ciudadela-456', leaderName: 'Maria Leader', date: '2024-07-21', newRevenue: 400000, newMembers: 3, lostMembers: 0, renewalRate: 96, avgNPS: 9.0, coachSatisfaction: 4.7, dailyWin: 'Se recibió feedback muy positivo sobre la nueva clase de spinning.', dailyChallenge: 'Poca venta de productos de nutrición.', lessonLearned: 'Realizar degustaciones para impulsar la venta de suplementos.', submittedAt: new Date('2024-07-21T18:30:00Z') },
-];
+import { db } from '@/lib/firebase';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
 const siteNames: Record<SiteId, string> = {
   ciudadela: "VIBRA Ciudadela",
@@ -29,9 +22,33 @@ const siteNames: Record<SiteId, string> = {
 
 export default function ReportHistoryPage() {
   const { role, user } = useAuth();
-  const [reports] = useState<DailyReport[]>(mockReports);
+  const [reports, setReports] = useState<DailyReport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedSite, setSelectedSite] = useState<SiteId | 'global'>(role === 'CEO' ? 'global' : user!.siteId!);
   const [selectedReport, setSelectedReport] = useState<DailyReport | null>(null);
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      if (!user) return;
+      setIsLoading(true);
+
+      const reportsRef = collection(db, 'daily-reports');
+      let q;
+
+      if (role === 'CEO') {
+        q = query(reportsRef, orderBy('date', 'desc'));
+      } else {
+        q = query(reportsRef, where('siteId', '==', user.siteId), orderBy('date', 'desc'));
+      }
+      
+      const querySnapshot = await getDocs(q);
+      const fetchedReports = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyReport));
+      setReports(fetchedReports);
+      setIsLoading(false);
+    };
+
+    fetchReports();
+  }, [user, role]);
 
   const filteredReports = reports.filter(r => {
     if (role === 'CEO') {
@@ -39,7 +56,7 @@ export default function ReportHistoryPage() {
         return r.siteId === selectedSite;
     }
     return r.siteId === user?.siteId;
-  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  });
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 
@@ -55,9 +72,7 @@ export default function ReportHistoryPage() {
       {role === 'CEO' && (
         <div className="pb-4">
           <Select onValueChange={(value: SiteId | 'global') => setSelectedSite(value)} defaultValue={selectedSite}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Selecciona una sede" />
-            </SelectTrigger>
+            <SelectTrigger className="w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="global">Todas las Sedes</SelectItem>
               <SelectItem value="ciudadela">VIBRA Ciudadela</SelectItem>
@@ -70,6 +85,9 @@ export default function ReportHistoryPage() {
 
       <Card>
         <CardContent className="pt-6">
+          {isLoading ? (
+             <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -98,7 +116,7 @@ export default function ReportHistoryPage() {
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-[625px]">
                         <DialogHeader>
-                          <DialogTitle>Reporte de {siteNames[report.siteId]} - {format(new Date(report.date), 'PPP', { locale: es })}</DialogTitle>
+                          <DialogTitle>Reporte de {report.siteId} - {format(new Date(report.date), 'PPP', { locale: es })}</DialogTitle>
                           <DialogDescription>Enviado por {report.leaderName}</DialogDescription>
                         </DialogHeader>
                         {selectedReport && (
@@ -124,12 +142,11 @@ export default function ReportHistoryPage() {
                   </TableCell>
                 </TableRow>
               ))}
+                {filteredReports.length === 0 && !isLoading && (
+                    <TableRow><TableCell colSpan={role === 'CEO' ? 6 : 5} className="h-24 text-center">No hay reportes para mostrar.</TableCell></TableRow>
+                )}
             </TableBody>
           </Table>
-           {filteredReports.length === 0 && (
-            <div className="text-center p-8 text-muted-foreground">
-              No hay reportes para mostrar.
-            </div>
           )}
         </CardContent>
       </Card>

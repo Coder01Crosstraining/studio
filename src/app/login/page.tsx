@@ -25,14 +25,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { FirebaseError } from "firebase/app";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor, introduce una dirección de correo electrónico válida." }),
-  password: z.string().min(1, { message: "La contraseña es obligatoria." }),
+  password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
 });
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user, loading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
@@ -45,16 +46,35 @@ export default function LoginPage() {
     },
   });
 
+  React.useEffect(() => {
+    if (!loading && user) {
+        router.push("/");
+    }
+  }, [user, loading, router]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await login(values.email);
+      await login(values.email, values.password);
       router.push("/");
     } catch (error: any) {
+      let description = "Ocurrió un error inesperado.";
+      if (error instanceof FirebaseError) {
+          switch (error.code) {
+              case "auth/user-not-found":
+              case "auth/wrong-password":
+              case "auth/invalid-credential":
+                  description = "El correo electrónico o la contraseña son incorrectos."
+                  break;
+              default:
+                  description = "Error de autenticación. Por favor, inténtalo de nuevo."
+                  break;
+          }
+      }
       toast({
         variant: "destructive",
         title: "Fallo de Inicio de Sesión",
-        description: error.message,
+        description,
       });
     } finally {
       setIsLoading(false);
