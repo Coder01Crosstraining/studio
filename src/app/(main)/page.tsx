@@ -334,8 +334,8 @@ export default function DashboardPage() {
       </div>
 
       {selectedSite !== 'global' ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-full lg:col-span-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <Card className="lg:col-span-7">
             <CardHeader><CardTitle>Ventas Diarias vs. Meta (Últimos 14 Días)</CardTitle></CardHeader>
             <CardContent className="pl-2">
                <ChartContainer config={chartConfig} className="h-[350px] w-full">
@@ -347,7 +347,7 @@ export default function DashboardPage() {
                </ChartContainer>
             </CardContent>
           </Card>
-          <Card className="col-span-full lg:col-span-3">
+          <Card className="lg:col-span-5">
             <CardHeader><CardTitle>Nuevos Miembros vs. Miembros Perdidos (Últimos 14 Días)</CardTitle></CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[350px] w-full">
