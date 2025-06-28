@@ -39,13 +39,25 @@ const userSchema = z.object({
     path: ["siteId"],
 });
 
-function SiteManagement({ sites, loading, refetchSites }: { sites: Site[], loading: boolean, refetchSites: () => void }) {
+function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[], users: User[], loading: boolean, refetchSites: () => void }) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSite, setEditingSite] = useState<Site | null>(null);
 
   const form = useForm<z.infer<typeof siteSchema>>({ resolver: zodResolver(siteSchema) });
+
+  const siteLeadersMap = useMemo(() => {
+    const map = new Map<SiteId, string>();
+    const siteLeaders = users.filter(u => u.role === 'SiteLeader' && u.siteId);
+    for (const leader of siteLeaders) {
+        if(leader.siteId) {
+             map.set(leader.siteId, leader.name);
+        }
+    }
+    return map;
+  }, [users]);
+
 
   const handleOpenDialog = (site: Site | null = null) => {
     setEditingSite(site);
@@ -141,7 +153,10 @@ function SiteManagement({ sites, loading, refetchSites }: { sites: Site[], loadi
               {sites.map(site => (
                 <Card key={site.id}>
                   <CardContent className="p-4 flex items-center justify-between">
-                    <p className="font-medium">{site.name}</p>
+                    <div>
+                      <p className="font-medium">{site.name}</p>
+                      <p className="text-sm text-muted-foreground">{siteLeadersMap.get(site.id) || 'Sin líder asignado'}</p>
+                    </div>
                     <div className="flex items-center">
                       <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(site)}><Edit className="h-4 w-4" /></Button>
                       <AlertDialog>
@@ -165,6 +180,7 @@ function SiteManagement({ sites, loading, refetchSites }: { sites: Site[], loadi
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nombre</TableHead>
+                    <TableHead>Líder de Sede</TableHead>
                     <TableHead className="text-right w-[120px]">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -172,6 +188,7 @@ function SiteManagement({ sites, loading, refetchSites }: { sites: Site[], loadi
                   {sites.map(site => (
                     <TableRow key={site.id}>
                       <TableCell className="font-medium">{site.name}</TableCell>
+                      <TableCell>{siteLeadersMap.get(site.id) || 'Sin líder asignado'}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(site)}><Edit className="h-4 w-4" /></Button>
                         <AlertDialog>
@@ -396,7 +413,7 @@ export default function ManagementPage() {
           <TabsTrigger value="users">Usuarios</TabsTrigger>
         </TabsList>
         <TabsContent value="sites" className="mt-4">
-          <SiteManagement sites={sites} loading={loadingSites} refetchSites={refetchSites} />
+          <SiteManagement sites={sites} users={users} loading={loadingSites || loadingUsers} refetchSites={refetchSites} />
         </TabsContent>
         <TabsContent value="users" className="mt-4">
           <UserManagement sites={sites} users={users} loading={loadingUsers || loadingSites} refetchUsers={refetchUsers} />
