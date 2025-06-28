@@ -34,7 +34,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
     return (
         <div className={cn(
             "flex flex-1 flex-col md:ml-[var(--sidebar-width-icon)] transition-all",
-            shouldBlur && "blur-sm pointer-events-none"
+            shouldBlur && "blur-sm"
         )}>
             <MobileHeader />
             <main className="flex-1 p-4 sm:p-6 lg:p-8">
@@ -44,6 +44,23 @@ function MainContent({ children }: { children: React.ReactNode }) {
     )
 }
 
+function LayoutContainer({ children }: { children: React.ReactNode }) {
+  const { state, isMobile, setOpen } = useSidebar();
+  const showOverlay = state === 'expanded' && !isMobile;
+
+  return (
+      <div className="flex min-h-screen bg-muted/20">
+        <SidebarNav />
+        <MainContent>{children}</MainContent>
+        {showOverlay && (
+            <div 
+                className="fixed inset-0 z-30 bg-transparent"
+                onClick={() => setOpen(false)}
+            />
+        )}
+      </div>
+  );
+}
 
 export default function MainLayout({
   children,
@@ -65,10 +82,7 @@ export default function MainLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen bg-muted/20">
-        <SidebarNav />
-        <MainContent>{children}</MainContent>
-      </div>
+      <LayoutContainer>{children}</LayoutContainer>
     </SidebarProvider>
   );
 }

@@ -124,7 +124,7 @@ export function SidebarNav() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarMenu>
+        <SidebarMenu className="group-data-[state=collapsed]/sidebar:pointer-events-none">
           {filteredNavItems.map((item) => (
              <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
@@ -143,7 +143,7 @@ export function SidebarNav() {
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter>
-         <div className={cn("flex w-full items-center gap-3 overflow-hidden p-2 text-left text-sm", "group-data-[state=collapsed]/sidebar:justify-center")}>
+         <div className={cn("flex w-full items-center gap-3 overflow-hidden p-2 text-left text-sm", "group-data-[state=collapsed]/sidebar:w-auto group-data-[state=collapsed]/sidebar:justify-center")}>
             <Avatar className="h-8 w-8 shrink-0">
                 <AvatarImage src={`https://i.pravatar.cc/150?u=${user?.email}`} />
                 <AvatarFallback>{user?.name?.charAt(0).toUpperCase()}</AvatarFallback>
