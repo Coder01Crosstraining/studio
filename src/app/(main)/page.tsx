@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
@@ -293,7 +293,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Ventas a la Fecha</CardTitle></CardHeader>
           <CardContent><div className="text-2xl font-bold">{formatCurrency(selectedSite === 'global' ? globalSummary.revenue : currentKpis?.revenue || 0)}</div></CardContent>
@@ -333,7 +333,7 @@ export default function DashboardPage() {
 
       {selectedSite !== 'global' ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4">
+          <Card className="col-span-full lg:col-span-4">
             <CardHeader><CardTitle>Ventas Diarias vs. Meta (Últimos 14 Días)</CardTitle></CardHeader>
             <CardContent className="pl-2">
                <ChartContainer config={chartConfig} className="h-[350px] w-full">
@@ -345,7 +345,7 @@ export default function DashboardPage() {
                </ChartContainer>
             </CardContent>
           </Card>
-          <Card className="col-span-3">
+          <Card className="col-span-full lg:col-span-3">
             <CardHeader><CardTitle>Nuevos Miembros vs. Miembros Perdidos (Últimos 14 Días)</CardTitle></CardHeader>
             <CardContent>
               <ChartContainer config={chartConfig} className="h-[350px] w-full">
@@ -359,7 +359,10 @@ export default function DashboardPage() {
         </div>
       ) : (
          <Card>
-            <CardHeader><CardTitle>Comparación de KPIs entre Sedes</CardTitle></CardHeader>
+            <CardHeader>
+                <CardTitle>Comparación de KPIs entre Sedes</CardTitle>
+                <CardDescription>Un resumen de los indicadores clave de todas las sedes.</CardDescription>
+            </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader><TableRow>

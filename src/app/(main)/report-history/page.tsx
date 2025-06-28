@@ -91,7 +91,13 @@ export default function ReportHistoryPage() {
       )}
 
       <Card>
-        <CardContent className="pt-6">
+        <CardHeader>
+            <CardTitle>Todos los Reportes</CardTitle>
+            <CardDescription>
+                Un registro completo de todos los informes diarios enviados.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
           {isLoading ? (
              <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
           ) : (

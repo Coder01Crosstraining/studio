@@ -23,7 +23,6 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db, storage } from '@/lib/firebase';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const evidenceSchema = z.object({
   title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
@@ -209,7 +208,11 @@ export default function EvidencePage() {
       )}
 
       <Card>
-        <CardContent className="pt-6">
+        <CardHeader>
+            <CardTitle>Repositorio de Evidencias</CardTitle>
+            <CardDescription>Documentos y actas subidos por los líderes de sede.</CardDescription>
+        </CardHeader>
+        <CardContent>
         {isFetching ? (
           <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
         ) : (
@@ -239,14 +242,18 @@ export default function EvidencePage() {
                           <div><p className="font-semibold">Archivo</p><p className="text-muted-foreground"><a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{selectedDocument.fileName}</a></p></div>
                           
                           <div className="font-semibold">Vista Previa</div>
-                          <div className="rounded-md border p-4 h-64 flex items-center justify-center bg-muted/50">
+                          <div className="rounded-md border p-4 h-80 flex items-center justify-center bg-muted/50">
                             {selectedDocument.fileType === 'image' ? (
-                                <Image src={selectedDocument.fileUrl} alt={`Vista previa de ${selectedDocument.title}`} width={400} height={300} className="max-h-full w-auto object-contain" />
+                                <Image src={selectedDocument.fileUrl} alt={`Vista previa de ${selectedDocument.title}`} width={400} height={300} className="max-h-full w-auto object-contain rounded-md" />
                             ) : (
-                                <div className="text-center text-muted-foreground">
-                                    <FileText className="mx-auto h-16 w-16" />
-                                    <p className="mt-2">No hay vista previa disponible para archivos PDF.</p>
-                                    <p><a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Descargar archivo</a></p>
+                                <div className="text-center text-muted-foreground flex flex-col items-center gap-4">
+                                    <FileText className="mx-auto h-24 w-24" />
+                                    <div>
+                                        <p>No hay vista previa disponible para archivos PDF.</p>
+                                        <a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">
+                                            Descargar o abrir archivo
+                                        </a>
+                                    </div>
                                 </div>
                             )}
                           </div>
