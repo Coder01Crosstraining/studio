@@ -12,7 +12,6 @@ import {
   History,
   FolderKanban,
   UserCog,
-  Search,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
@@ -25,9 +24,8 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarSeparator,
-  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -80,8 +78,8 @@ const navItems = [
 export function SidebarNav() {
   const pathname = usePathname();
   const { user, role, logout } = useAuth();
+  const { toggleSidebar } = useSidebar();
   const router = useRouter();
-  const [search, setSearch] = React.useState("");
 
   const handleLogout = () => {
     logout();
@@ -92,31 +90,30 @@ export function SidebarNav() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" className="h-8 w-8 text-primary">
-            <rect width="256" height="256" fill="none" />
-            <path d="M48,88H208V48a8,8,0,0,0-8-8H56a8,8,0,0,0-8,8Z" opacity="0.2" />
-            <path d="M48,88H208v40a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8Z" opacity="0.2" />
-            <path d="M48,168H208v40a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8Z" opacity="0.2" />
-            <line x1="16" y1="88" x2="240" y2="88" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-            <line x1="16" y1="168" x2="240" y2="168" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-            <path d="M208,40H48a8,8,0,0,0-8,8V208a8,8,0,0,0,8,8H208a8,8,0,0,0,8-8V48A8,8,0,0,0,208,40Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-            <line x1="88" y1="40" x2="88" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-            <line x1="168" y1="40" x2="168" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
-          </svg>
-          <span className="text-xl font-semibold group-data-[state=collapsed]:hidden">VIBRA OS</span>
-        </Link>
-        <SidebarTrigger />
+      <SidebarHeader>
+        <Button 
+          variant="ghost" 
+          className="h-auto w-full justify-start p-2 text-xl font-semibold group-data-[state=collapsed]:justify-center" 
+          onClick={toggleSidebar}
+        >
+          <div className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" className="h-8 w-8 shrink-0 text-primary">
+              <rect width="256" height="256" fill="none" />
+              <path d="M48,88H208V48a8,8,0,0,0-8-8H56a8,8,0,0,0-8,8Z" opacity="0.2" />
+              <path d="M48,88H208v40a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8Z" opacity="0.2" />
+              <path d="M48,168H208v40a8,8,0,0,1-8,8H56a8,8,0,0,1-8-8Z" opacity="0.2" />
+              <line x1="16" y1="88" x2="240" y2="88" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+              <line x1="16" y1="168" x2="240" y2="168" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+              <path d="M208,40H48a8,8,0,0,0-8,8V208a8,8,0,0,0,8,8H208a8,8,0,0,0,8-8V48A8,8,0,0,0,208,40Z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+              <line x1="88" y1="40" x2="88" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+              <line x1="168" y1="40" x2="168" y2="216" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="16" />
+            </svg>
+            <span className="group-data-[state=collapsed]:hidden">VIBRA OS</span>
+          </div>
+        </Button>
       </SidebarHeader>
 
       <SidebarContent>
-        <div className="p-2 group-data-[state=collapsed]:hidden">
-            <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Buscar..." className="pl-8 w-full" value={search} onChange={(e) => setSearch(e.target.value)} />
-            </div>
-        </div>
         <SidebarMenu>
           {filteredNavItems.map((item) => (
              <SidebarMenuItem key={item.href}>
