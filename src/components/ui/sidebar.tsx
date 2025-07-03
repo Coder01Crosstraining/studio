@@ -31,6 +31,8 @@ type SidebarContext = {
   setOpenMobile: (open: boolean | ((open: boolean) => boolean)) => void
   isMobile: boolean
   toggleSidebar: () => void
+  isDropdownOpen: boolean
+  setIsDropdownOpen: (open: boolean) => void
 }
 
 const SidebarContext = React.createContext<SidebarContext | null>(null)
@@ -66,6 +68,7 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
+    const [isDropdownOpen, setIsDropdownOpen] = React.useState(false)
 
     const [_open, _setOpen] = React.useState(defaultOpen)
     const open = openProp ?? _open
@@ -114,8 +117,10 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        isDropdownOpen,
+        setIsDropdownOpen,
       }),
-      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, isDropdownOpen]
     )
 
     return (
@@ -160,7 +165,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile, setOpen } = useSidebar()
+    const { isMobile, state, openMobile, setOpenMobile, setOpen, isDropdownOpen } = useSidebar()
     const [hasMounted, setHasMounted] = React.useState(false);
 
     React.useEffect(() => {
@@ -232,7 +237,11 @@ const Sidebar = React.forwardRef<
         data-state={state}
         data-side={side}
         onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
+        onMouseLeave={() => {
+            if (!isDropdownOpen) {
+                setOpen(false)
+            }
+        }}
         {...props}
       >
         <div

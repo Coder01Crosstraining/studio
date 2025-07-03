@@ -86,7 +86,7 @@ const navItems = [
 export function SidebarNav() {
   const pathname = usePathname();
   const { user, role, logout } = useAuth();
-  const { isMobile, setOpenMobile } = useSidebar();
+  const { isMobile, setOpenMobile, setIsDropdownOpen } = useSidebar();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -156,7 +156,7 @@ export function SidebarNav() {
                 <p className="truncate font-medium">{user?.name}</p>
                 <p className="truncate text-xs text-muted-foreground">{user?.role}</p>
             </div>
-             <DropdownMenu>
+             <DropdownMenu onOpenChange={setIsDropdownOpen}>
               <DropdownMenuTrigger asChild>
                  <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[state=collapsed]/sidebar:hidden">
                     <LogOut className="h-4 w-4" />
