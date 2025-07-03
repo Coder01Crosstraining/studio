@@ -28,11 +28,8 @@ export interface DailyReport {
   leaderName: string;
   date: string; // YYYY-MM-DD
   newRevenue: number;
-  newMembers: number;
-  lostMembers: number;
   renewalRate: number;
   avgNPS: number;
-  coachSatisfaction: number;
   dailyWin: string;
   dailyChallenge: string;
   lessonLearned: string;

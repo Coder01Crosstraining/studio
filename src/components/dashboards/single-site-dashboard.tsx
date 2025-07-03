@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bar, BarChart, CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { Line, LineChart, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Site, SiteId, DailyReport } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
@@ -18,8 +18,6 @@ import { Button } from '@/components/ui/button';
 const chartConfig = {
   revenue: { label: 'Ingresos', color: 'hsl(var(--chart-1))' },
   goal: { label: 'Meta', color: 'hsl(var(--chart-2))' },
-  new: { label: 'Nuevos Miembros', color: 'hsl(var(--chart-1))' },
-  lost: { label: 'Miembros Perdidos', color: 'hsl(var(--destructive))' },
 };
 
 const colombianHolidays2024 = [
@@ -76,11 +74,10 @@ function calculateMonthProgress(today: Date) {
 
 
 type DailyChartData = { date: string; revenue: number; goal: number };
-type MembersChartData = { date: string; new: number; lost: number };
 
 export function SingleSiteDashboard({ siteId }: { siteId: SiteId }) {
     const [kpiData, setKpiData] = useState<Site | null>(null);
-    const [dailyData, setDailyData] = useState<{revenue: DailyChartData[], members: MembersChartData[]}| null>(null);
+    const [dailyData, setDailyData] = useState<DailyChartData[]| null>(null);
     const [isKpiLoading, setIsKpiLoading] = useState(true);
     const [forecast, setForecast] = useState<GenerateSalesForecastOutput | null>(null);
     const [isForecastLoading, setIsForecastLoading] = useState(true);
@@ -149,13 +146,7 @@ export function SingleSiteDashboard({ siteId }: { siteId: SiteId }) {
                 goal: Math.floor(kpiData.monthlyGoal / 30) // Simplified daily goal
             }));
 
-            const membersChartData: MembersChartData[] = reports.map(r => ({
-                date: format(new Date(r.date), 'MMM d', { locale: es }),
-                new: r.newMembers,
-                lost: r.lostMembers
-            }));
-
-            setDailyData({ revenue: revenueChartData, members: membersChartData });
+            setDailyData(revenueChartData);
         };
         fetchDailyData();
     }, [siteId, kpiData]);
@@ -231,27 +222,16 @@ export function SingleSiteDashboard({ siteId }: { siteId: SiteId }) {
                 <CardContent><div className="text-2xl font-bold">{kpiData.nps.toFixed(1)}</div></CardContent>
             </Card>
             </div>
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4">
             <Card>
                 <CardHeader><CardTitle>Ventas Diarias vs. Meta (Últimos 14 Días)</CardTitle></CardHeader>
                 <CardContent className="pl-2">
                 <ChartContainer config={chartConfig} className="h-[350px] w-full">
-                    <LineChart data={dailyData?.revenue || []}>
+                    <LineChart data={dailyData || []}>
                     <CartesianGrid vertical={false} /><XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} /><YAxis tickFormatter={(value) => `$${value / 1000}k`} />
                     <Tooltip content={<ChartTooltipContent formatter={(value, name) => [formatCurrency(value as number), name === 'revenue' ? 'Ingresos' : 'Meta']} />} />
                     <Line type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} dot={true} /><Line type="monotone" dataKey="goal" stroke="var(--color-goal)" strokeDasharray="5 5" />
                     </LineChart>
-                </ChartContainer>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader><CardTitle>Nuevos Miembros vs. Miembros Perdidos (Últimos 14 Días)</CardTitle></CardHeader>
-                <CardContent>
-                <ChartContainer config={chartConfig} className="h-[350px] w-full">
-                    <BarChart data={dailyData?.members || []}>
-                    <CartesianGrid vertical={false} /><XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} /><YAxis />
-                    <Tooltip content={<ChartTooltipContent />} /><Bar dataKey="new" fill="var(--color-new)" radius={4} /><Bar dataKey="lost" fill="var(--color-lost)" radius={4} />
-                    </BarChart>
                 </ChartContainer>
                 </CardContent>
             </Card>

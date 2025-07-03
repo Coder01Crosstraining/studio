@@ -144,10 +144,7 @@ export default function ReportHistoryPage() {
                               <div className="grid grid-cols-2 gap-4">
                                   <div><p className="font-semibold">Ventas del Día</p><p className="text-muted-foreground">{formatCurrency(selectedReport.newRevenue)}</p></div>
                                   <div><p className="font-semibold">Tasa de Renovación</p><p className="text-muted-foreground">{selectedReport.renewalRate}%</p></div>
-                                  <div><p className="font-semibold">Nuevos Miembros</p><p className="text-muted-foreground">{selectedReport.newMembers}</p></div>
-                                  <div><p className="font-semibold">Miembros Perdidos</p><p className="text-muted-foreground">{selectedReport.lostMembers}</p></div>
                                   <div><p className="font-semibold">NPS Promedio</p><p className="text-muted-foreground">{selectedReport.avgNPS}/10</p></div>
-                                  <div><p className="font-semibold">Satisfacción Coach</p><p className="text-muted-foreground">{selectedReport.coachSatisfaction}/5</p></div>
                               </div>
                             <div><p className="font-semibold">Logro del Día</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.dailyWin}</p></div>
                             <div><p className="font-semibold">Desafío del Día</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.dailyChallenge}</p></div>
@@ -161,14 +158,10 @@ export default function ReportHistoryPage() {
                       </Dialog>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4 pt-0 text-sm grid grid-cols-2 gap-4">
+                  <CardContent className="p-4 pt-0 text-sm">
                     <div>
                       <p className="text-muted-foreground">Ventas</p>
                       <p className="font-medium">{formatCurrency(report.newRevenue)}</p>
-                    </div>
-                     <div>
-                      <p className="text-muted-foreground">Nuevos Miembros</p>
-                      <p className="font-medium">{report.newMembers}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -184,13 +177,12 @@ export default function ReportHistoryPage() {
                     {role === 'CEO' && <TableHead>Sede</TableHead>}
                     <TableHead>Líder</TableHead>
                     <TableHead className="text-right">Ventas</TableHead>
-                    <TableHead className="text-right">Nuevos Miembros</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredReports.length === 0 && !isLoading && (
-                      <TableRow><TableCell colSpan={role === 'CEO' ? 6 : 5} className="h-24 text-center">No hay reportes para mostrar.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={role === 'CEO' ? 5 : 4} className="h-24 text-center">No hay reportes para mostrar.</TableCell></TableRow>
                   )}
                   {filteredReports.map((report) => (
                     <TableRow key={report.id}>
@@ -198,7 +190,6 @@ export default function ReportHistoryPage() {
                       {role === 'CEO' && <TableCell>{siteMap.get(report.siteId) || report.siteId}</TableCell>}
                       <TableCell className="font-medium">{report.leaderName}</TableCell>
                       <TableCell className="text-right">{formatCurrency(report.newRevenue)}</TableCell>
-                      <TableCell className="text-right">{report.newMembers}</TableCell>
                       <TableCell className="text-right">
                         <Dialog onOpenChange={(open) => !open && setSelectedReport(null)}>
                           <DialogTrigger asChild>
@@ -216,10 +207,7 @@ export default function ReportHistoryPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div><p className="font-semibold">Ventas del Día</p><p className="text-muted-foreground">{formatCurrency(selectedReport.newRevenue)}</p></div>
                                     <div><p className="font-semibold">Tasa de Renovación</p><p className="text-muted-foreground">{selectedReport.renewalRate}%</p></div>
-                                    <div><p className="font-semibold">Nuevos Miembros</p><p className="text-muted-foreground">{selectedReport.newMembers}</p></div>
-                                    <div><p className="font-semibold">Miembros Perdidos</p><p className="text-muted-foreground">{selectedReport.lostMembers}</p></div>
                                     <div><p className="font-semibold">NPS Promedio</p><p className="text-muted-foreground">{selectedReport.avgNPS}/10</p></div>
-                                    <div><p className="font-semibold">Satisfacción Coach</p><p className="text-muted-foreground">{selectedReport.coachSatisfaction}/5</p></div>
                                 </div>
                               <div><p className="font-semibold">Logro del Día</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.dailyWin}</p></div>
                               <div><p className="font-semibold">Desafío del Día</p><p className="text-muted-foreground p-2 bg-muted rounded-md">{selectedReport.dailyChallenge}</p></div>

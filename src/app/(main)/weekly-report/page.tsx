@@ -24,11 +24,8 @@ import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from '
 const reportSchema = z.object({
   date: z.date({ required_error: "Se requiere una fecha para el reporte." }),
   newRevenue: z.coerce.number().min(0, "Los ingresos no pueden ser negativos."),
-  newMembers: z.coerce.number().int().min(0, "Los nuevos miembros no pueden ser negativos."),
-  lostMembers: z.coerce.number().int().min(0, "Los miembros perdidos no pueden ser negativos."),
   renewalRate: z.coerce.number().min(0).max(100, "La tasa de renovación debe estar entre 0 y 100."),
   avgNPS: z.coerce.number().min(0).max(10, "El NPS debe estar entre 0 y 10."),
-  coachSatisfaction: z.coerce.number().min(0).max(5, "La satisfacción del entrenador debe ser entre 0 y 5."),
   dailyWin: z.string().min(10, "El logro del día debe tener al menos 10 caracteres.").max(500),
   dailyChallenge: z.string().min(10, "El desafío del día debe tener al menos 10 caracteres.").max(500),
   lessonLearned: z.string().min(10, "La lección aprendida debe tener al menos 10 caracteres.").max(500),
@@ -140,24 +137,15 @@ export default function DailyReportPage() {
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <FormField control={form.control} name="newRevenue" render={({ field }) => (
                   <FormItem><FormLabel>Ventas del Día (COP)</FormLabel><FormControl><Input type="number" placeholder="1500000" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="newMembers" render={({ field }) => (
-                  <FormItem><FormLabel>Nuevos Miembros</FormLabel><FormControl><Input type="number" placeholder="10" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="lostMembers" render={({ field }) => (
-                  <FormItem><FormLabel>Miembros Perdidos</FormLabel><FormControl><Input type="number" placeholder="3" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="renewalRate" render={({ field }) => (
                   <FormItem><FormLabel>Tasa de Renovación (%)</FormLabel><FormControl><Input type="number" placeholder="85" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="avgNPS" render={({ field }) => (
                   <FormItem><FormLabel>NPS Promedio (0-10)</FormLabel><FormControl><Input type="number" step="0.1" placeholder="8.5" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="coachSatisfaction" render={({ field }) => (
-                  <FormItem><FormLabel>Satisfacción de Entrenadores (0-5)</FormLabel><FormControl><Input type="number" step="0.1" placeholder="4.8" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
 
