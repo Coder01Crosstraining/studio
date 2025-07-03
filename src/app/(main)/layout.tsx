@@ -33,10 +33,8 @@ function MainContent({ children }: { children: React.ReactNode }) {
 
     return (
         <div className={cn(
-            "flex flex-1 flex-col transition-all",
+            "flex flex-1 flex-col transition-all md:ml-[var(--sidebar-width-icon)]",
             {
-                "md:ml-[var(--sidebar-width-icon)]": !isMobile && state === 'collapsed',
-                "md:ml-[var(--sidebar-width)]": !isMobile && state === 'expanded',
                 "blur-sm": shouldBlur
             }
         )}>
