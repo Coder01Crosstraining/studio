@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query } from 'firebase/firestore';
 import type { MonthlyHistory, Site, SiteId } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -36,9 +36,18 @@ export default function HistoryPage() {
       setIsLoading(true);
 
       try {
-        const historyQuery = query(collection(db, 'monthly-history'), orderBy('year', 'desc'), orderBy('month', 'desc'));
+        const historyQuery = query(collection(db, 'monthly-history'));
         const historySnapshot = await getDocs(historyQuery);
         const fetchedHistory = historySnapshot.docs.map(doc => doc.data() as MonthlyHistory);
+        
+        // Sort data on the client-side to avoid needing a composite index
+        fetchedHistory.sort((a, b) => {
+            if (a.year !== b.year) {
+                return b.year - a.year; // Descending year
+            }
+            return b.month - a.month; // Descending month
+        });
+
         setHistoryData(fetchedHistory);
 
         const sitesSnapshot = await getDocs(collection(db, 'sites'));
