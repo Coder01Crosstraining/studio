@@ -160,7 +160,7 @@ const Sidebar = React.forwardRef<
     },
     ref
   ) => {
-    const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const { isMobile, state, openMobile, setOpenMobile, setOpen } = useSidebar()
     const [hasMounted, setHasMounted] = React.useState(false);
 
     React.useEffect(() => {
@@ -231,6 +231,8 @@ const Sidebar = React.forwardRef<
           )}
         data-state={state}
         data-side={side}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
         {...props}
       >
         <div

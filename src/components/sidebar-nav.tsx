@@ -86,7 +86,7 @@ const navItems = [
 export function SidebarNav() {
   const pathname = usePathname();
   const { user, role, logout } = useAuth();
-  const { toggleSidebar, isMobile, setOpenMobile, state, setOpen } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -107,7 +107,6 @@ export function SidebarNav() {
       <SidebarHeader>
         <Button 
             variant="ghost" 
-            onClick={toggleSidebar}
             className={cn(
                 "h-auto w-full justify-start p-2 text-xl font-semibold", 
                 "group-data-[state=collapsed]/sidebar:w-auto group-data-[state=collapsed]/sidebar:justify-center"
