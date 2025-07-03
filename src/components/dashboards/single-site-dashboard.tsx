@@ -1,24 +1,36 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Line, LineChart, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import type { Site, SiteId, DailyReport } from '@/lib/types';
+import type { Site, SiteId, DailyReport, UserRole } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
-import { Info, Loader2, RefreshCw } from 'lucide-react';
+import { Info, Loader2, Pencil, RefreshCw } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { format, getDay, getDate, getDaysInMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot, doc, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, getDocs, limit, orderBy, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 
 const chartConfig = {
   revenue: { label: 'Ingresos', color: 'hsl(var(--chart-1))' },
   goal: { label: 'Meta', color: 'hsl(var(--chart-2))' },
 };
+
+const kpiSchema = z.object({
+  revenue: z.coerce.number().min(0, "Las ventas deben ser un número positivo."),
+  monthlyGoal: z.coerce.number().min(0, "La meta debe ser un número positivo."),
+});
 
 const colombianHolidays2024 = [
   '2024-01-01', '2024-01-08', '2024-03-25', '2024-03-28', '2024-03-29',
@@ -75,7 +87,7 @@ function calculateMonthProgress(today: Date) {
 
 type DailyChartData = { date: string; revenue: number; goal: number };
 
-export function SingleSiteDashboard({ siteId }: { siteId: SiteId }) {
+export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: UserRole }) {
     const [kpiData, setKpiData] = useState<Site | null>(null);
     const [dailyData, setDailyData] = useState<DailyChartData[]| null>(null);
     const [isKpiLoading, setIsKpiLoading] = useState(true);
@@ -83,7 +95,12 @@ export function SingleSiteDashboard({ siteId }: { siteId: SiteId }) {
     const [isForecastLoading, setIsForecastLoading] = useState(true);
     const [isRecalculating, setIsRecalculating] = useState(false);
     const { toast } = useToast();
-    
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+    const kpiForm = useForm<z.infer<typeof kpiSchema>>({
+        resolver: zodResolver(kpiSchema),
+    });
+
     const fetchAndCacheForecast = React.useCallback(async () => {
         if (!kpiData) return;
         setIsForecastLoading(true);
@@ -123,12 +140,14 @@ export function SingleSiteDashboard({ siteId }: { siteId: SiteId }) {
         const siteRef = doc(db, 'sites', siteId);
         const unsubscribe = onSnapshot(siteRef, (doc) => {
             if (doc.exists()) {
-                setKpiData({ id: doc.id, ...doc.data() } as Site);
+                const siteData = { id: doc.id, ...doc.data() } as Site;
+                setKpiData(siteData);
+                kpiForm.reset({ revenue: siteData.revenue, monthlyGoal: siteData.monthlyGoal });
             }
             setIsKpiLoading(false);
         });
         return () => unsubscribe();
-    }, [siteId]);
+    }, [siteId, kpiForm]);
 
     // Fetch daily data for charts
     useEffect(() => {
@@ -170,6 +189,31 @@ export function SingleSiteDashboard({ siteId }: { siteId: SiteId }) {
     }, [kpiData, siteId, fetchAndCacheForecast]);
 
 
+    const handleKpiSubmit = async (values: z.infer<typeof kpiSchema>) => {
+        if (!siteId || !kpiData) return;
+        
+        const siteRef = doc(db, "sites", siteId);
+        try {
+          await updateDoc(siteRef, {
+            revenue: values.revenue,
+            monthlyGoal: values.monthlyGoal,
+          });
+          toast({
+            title: 'Éxito',
+            description: `Los KPIs para ${kpiData.name} han sido actualizados.`,
+          });
+          setIsEditModalOpen(false);
+        } catch (error) {
+          console.error("Error updating KPIs:", error);
+          toast({
+            variant: "destructive",
+            title: 'Error',
+            description: `No se pudo actualizar los KPIs.`,
+          });
+        }
+      };
+
+
     const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 
     if (isKpiLoading || !kpiData) {
@@ -199,6 +243,23 @@ export function SingleSiteDashboard({ siteId }: { siteId: SiteId }) {
                             {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                             <span className="sr-only">Recalcular Pronóstico</span>
                         </Button>
+                        {role === 'CEO' && (
+                            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[425px]">
+                                    <DialogHeader><DialogTitle>Editar KPIs para {kpiData.name}</DialogTitle><DialogDescription>Ajusta las ventas a la fecha y la meta mensual para esta sede.</DialogDescription></DialogHeader>
+                                    <Form {...kpiForm}>
+                                    <form onSubmit={kpiForm.handleSubmit(handleKpiSubmit)} className="space-y-4 py-4">
+                                        <FormField control={kpiForm.control} name="revenue" render={({ field }) => ( <FormItem><FormLabel>Ventas a la Fecha (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <FormField control={kpiForm.control} name="monthlyGoal" render={({ field }) => ( <FormItem><FormLabel>Nueva Meta Mensual (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                        <DialogFooter><Button type="submit">Guardar Cambios</Button></DialogFooter>
+                                    </form>
+                                    </Form>
+                                </DialogContent>
+                            </Dialog>
+                        )}
                     </div>
                 </CardHeader>
                 <CardContent>

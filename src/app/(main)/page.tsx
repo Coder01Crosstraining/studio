@@ -74,10 +74,10 @@ export default function DashboardPage() {
         selectedSite === 'global' ? (
           <GlobalDashboard />
         ) : (
-          <SingleSiteDashboard siteId={selectedSite} />
+          <SingleSiteDashboard siteId={selectedSite} role={role} />
         )
       ) : (
-        user?.siteId && <SingleSiteDashboard siteId={user.siteId} />
+        user?.siteId && <SingleSiteDashboard siteId={user.siteId} role={role!} />
       )}
     </div>
   );
