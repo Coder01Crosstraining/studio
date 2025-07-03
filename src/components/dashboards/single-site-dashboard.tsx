@@ -158,11 +158,15 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
             const q = query(reportsRef, orderBy('date', 'desc'), limit(14));
             const querySnapshot = await getDocs(q);
             const reports = querySnapshot.docs.map(doc => doc.data() as DailyReport).reverse();
+            
+            const monthProgress = calculateMonthProgress(new Date());
+            const totalEffectiveDays = monthProgress.effectiveBusinessDaysPast + monthProgress.effectiveBusinessDaysRemaining;
+            const dailyGoal = totalEffectiveDays > 0 ? kpiData.monthlyGoal / totalEffectiveDays : 0;
 
             const revenueChartData: DailyChartData[] = reports.map(r => ({
                 date: format(new Date(r.date), 'MMM d', { locale: es }),
                 revenue: r.newRevenue,
-                goal: Math.floor(kpiData.monthlyGoal / 30) // Simplified daily goal
+                goal: Math.floor(dailyGoal)
             }));
 
             setDailyData(revenueChartData);
