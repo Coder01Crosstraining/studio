@@ -74,11 +74,18 @@ export default function OneOnOnePage() {
             if (role === 'CEO') {
                 q = query(sessionsRef, orderBy('createdAt', 'desc'));
             } else {
-                q = query(sessionsRef, where('siteId', '==', user.siteId), orderBy('createdAt', 'desc'));
+                // Query without ordering to avoid composite index requirement
+                q = query(sessionsRef, where('siteId', '==', user.siteId));
             }
     
             const querySnapshot = await getDocs(q);
             const fetchedSessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OneOnOneSession));
+            
+            // Sort client-side if the query didn't include ordering
+            if (role !== 'CEO') {
+              fetchedSessions.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+            }
+
             setSessions(fetchedSessions);
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -109,7 +116,10 @@ export default function OneOnOnePage() {
         createdAt: serverTimestamp()
       };
       const docRef = await addDoc(collection(db, 'one-on-one-sessions'), newSessionData);
-      setSessions(prev => [{...newSessionData, id: docRef.id, createdAt: new Date()}, ...prev]);
+      
+      const newSession = { ...newSessionData, id: docRef.id, createdAt: new Date() } as OneOnOneSession;
+      setSessions(prev => [newSession, ...prev].sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+
       toast({ title: 'Éxito', description: 'La nueva sesión 1-a-1 ha sido registrada.' });
       setIsLoading(false);
       setIsFormOpen(false);
