@@ -162,52 +162,59 @@ export default function EvidencePage() {
     }
     return documents;
   }, [documents, role, selectedSite]);
+  
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Gestión Documental</h2>
           <p className="text-muted-foreground">
             {role === 'CEO' ? 'Revisa las evidencias de todas las sedes.' : 'Sube y gestiona las evidencias de tu sede.'}
           </p>
         </div>
-        {role === 'SiteLeader' && (
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild><Button><PlusCircle className="mr-2 h-4 w-4" /> Subir Evidencia</Button></DialogTrigger>
-            <DialogContent className="sm:max-w-[625px]">
-              <DialogHeader><DialogTitle>Nueva Evidencia</DialogTitle><DialogDescription>Sube un documento o imagen como evidencia.</DialogDescription></DialogHeader>
-              <Form {...form}><form onSubmit={form.handleSubmit(onUploadSubmit)} className="space-y-4 py-4">
-                <FormField control={form.control} name="title" render={({ field }) => <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
-                <FormField control={form.control} name="description" render={({ field }) => <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>} />
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="category" render={({ field }) => (
-                    <FormItem><FormLabel>Categoría</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl><SelectTrigger><SelectValue placeholder="Elige una categoría" /></SelectTrigger></FormControl>
-                        <SelectContent>
-                          <SelectItem value="reunion">Acta de Reunión</SelectItem>
-                          <SelectItem value="preventiva">Acción Preventiva</SelectItem>
-                          <SelectItem value="correctiva">Acción Correctiva</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    <FormMessage /></FormItem>
-                  )} />
-                   <FormField control={form.control} name="file" render={({ field: { onChange, value, ...fieldProps } }) => (
-                    <FormItem><FormLabel>Archivo (JPG, PNG, PDF)</FormLabel><FormControl><Input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => onChange(e.target.files)} {...fieldProps} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                </div>
-                <DialogFooter><Button type="submit" disabled={isLoading}>{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Subir Archivo</Button></DialogFooter>
-              </form></Form>
-            </DialogContent>
-          </Dialog>
-        )}
+        <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground hidden md:block">
+                {capitalize(format(new Date(), "eeee, d 'de' MMMM", { locale: es }))}
+            </p>
+            {role === 'SiteLeader' && (
+              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogTrigger asChild><Button><PlusCircle className="mr-2 h-4 w-4" /> Subir Evidencia</Button></DialogTrigger>
+                <DialogContent className="sm:max-w-[625px]">
+                  <DialogHeader><DialogTitle>Nueva Evidencia</DialogTitle><DialogDescription>Sube un documento o imagen como evidencia.</DialogDescription></DialogHeader>
+                  <Form {...form}><form onSubmit={form.handleSubmit(onUploadSubmit)} className="space-y-4 py-4">
+                    <FormField control={form.control} name="title" render={({ field }) => <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>} />
+                    <FormField control={form.control} name="description" render={({ field }) => <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>} />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField control={form.control} name="category" render={({ field }) => (
+                        <FormItem><FormLabel>Categoría</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Elige una categoría" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              <SelectItem value="reunion">Acta de Reunión</SelectItem>
+                              <SelectItem value="preventiva">Acción Preventiva</SelectItem>
+                              <SelectItem value="correctiva">Acción Correctiva</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        <FormMessage /></FormItem>
+                      )} />
+                       <FormField control={form.control} name="file" render={({ field: { onChange, value, ...fieldProps } }) => (
+                        <FormItem><FormLabel>Archivo (JPG, PNG, PDF)</FormLabel><FormControl><Input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => onChange(e.target.files)} {...fieldProps} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                    </div>
+                    <DialogFooter><Button type="submit" disabled={isLoading}>{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Subir Archivo</Button></DialogFooter>
+                  </form></Form>
+                </DialogContent>
+              </Dialog>
+            )}
+        </div>
       </div>
       
       {role === 'CEO' && (
         <div className="pb-4">
           <Select onValueChange={(value: any) => setSelectedSite(value)} defaultValue={selectedSite}>
-            <SelectTrigger className="w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="global">Todas las Sedes</SelectItem>
               {sites.map(site => (

@@ -78,29 +78,33 @@ export default function ReportHistoryPage() {
   }, [reports, role, selectedSite]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Historial de Reportes Diarios</h2>
-          <p className="text-muted-foreground">Consulta los reportes de rendimiento enviados por los líderes de sede.</p>
+          <p className="text-muted-foreground">Consulta los reportes de rendimiento enviados.</p>
         </div>
+         {role === 'CEO' && (
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground hidden md:block">
+                {capitalize(format(new Date(), "eeee, d 'de' MMMM", { locale: es }))}
+            </p>
+            <Select onValueChange={(value: SiteId | 'global') => setSelectedSite(value)} defaultValue={selectedSite}>
+              <SelectTrigger className="w-full sm:w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="global">Todas las Sedes</SelectItem>
+                {sites.map(site => (
+                  <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
-
-      {role === 'CEO' && (
-        <div className="pb-4">
-          <Select onValueChange={(value: SiteId | 'global') => setSelectedSite(value)} defaultValue={selectedSite}>
-            <SelectTrigger className="w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="global">Todas las Sedes</SelectItem>
-              {sites.map(site => (
-                <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
 
       <Card>
         <CardHeader>

@@ -12,6 +12,7 @@ import {
   History,
   FolderKanban,
   UserCog,
+  Archive,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
@@ -69,6 +70,12 @@ const navItems = [
     roles: ["SiteLeader", "CEO"],
   },
   {
+    href: "/history",
+    icon: Archive,
+    label: "Historial KPIs",
+    roles: ["CEO"],
+  },
+  {
     href: "/management",
     icon: UserCog,
     label: "Gestión Usuarios",
@@ -90,8 +97,6 @@ export function SidebarNav() {
   const handleLinkClick = () => {
     if (isMobile) {
       setOpenMobile(false);
-    } else if (state === 'expanded') {
-      setOpen(false);
     }
   }
 

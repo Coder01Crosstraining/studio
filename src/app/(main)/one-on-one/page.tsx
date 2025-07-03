@@ -126,9 +126,11 @@ export default function OneOnOnePage() {
     return s.siteId === user?.siteId;
   });
 
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+
   return (
     <div className="w-full space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Sesiones 1-a-1</h2>
           {role === 'CEO' 
@@ -136,43 +138,48 @@ export default function OneOnOnePage() {
             : <p className="text-muted-foreground">Registra y consulta tus sesiones 1-a-1.</p>
           }
         </div>
-        {role === 'SiteLeader' && (
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild><Button><PlusCircle className="mr-2 h-4 w-4" /> Nueva Sesión</Button></DialogTrigger>
-            <DialogContent className="sm:max-w-[625px]">
-              <DialogHeader><DialogTitle>Registrar Nueva Sesión 1-a-1</DialogTitle><DialogDescription>Registra los detalles de tu sesión con un miembro del equipo.</DialogDescription></DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="employeeName" render={({ field }) => ( <FormItem><FormLabel>Nombre del Empleado</FormLabel><FormControl><Input placeholder="ej. Juan Pérez" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                     <FormField control={form.control} name="employeeRole" render={({ field }) => (
-                      <FormItem><FormLabel>Rol</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un rol" /></SelectTrigger></FormControl>
-                          <SelectContent><SelectItem value="Coach">Entrenador</SelectItem><SelectItem value="SalesAdvisor">Asesor de Ventas</SelectItem></SelectContent>
-                        </Select><FormMessage />
-                      </FormItem>
-                    )} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="sessionDate" render={({ field }) => ( <FormItem><FormLabel>Fecha de la Sesión</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={form.control} name="energyCheckIn" render={({ field }) => ( <FormItem><FormLabel>Nivel de Energía (1-10)</FormLabel><FormControl><Input type="number" min="1" max="10" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                  </div>
-                   <FormField control={form.control} name="mainWin" render={({ field }) => ( <FormItem><FormLabel>Logro Principal</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-                  <FormField control={form.control} name="opportunityForImprovement" render={({ field }) => ( <FormItem><FormLabel>Oportunidad de Mejora</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-                  <FormField control={form.control} name="actionPlan" render={({ field }) => ( <FormItem><FormLabel>Plan de Acción</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-                  <DialogFooter><Button type="submit" disabled={isLoading}>{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Guardar Sesión</Button></DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        )}
+        <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground hidden md:block">
+                {capitalize(format(new Date(), "eeee, d 'de' MMMM", { locale: es }))}
+            </p>
+            {role === 'SiteLeader' && (
+              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogTrigger asChild><Button><PlusCircle className="mr-2 h-4 w-4" /> Nueva Sesión</Button></DialogTrigger>
+                <DialogContent className="sm:max-w-[625px]">
+                  <DialogHeader><DialogTitle>Registrar Nueva Sesión 1-a-1</DialogTitle><DialogDescription>Registra los detalles de tu sesión con un miembro del equipo.</DialogDescription></DialogHeader>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField control={form.control} name="employeeName" render={({ field }) => ( <FormItem><FormLabel>Nombre del Empleado</FormLabel><FormControl><Input placeholder="ej. Juan Pérez" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                         <FormField control={form.control} name="employeeRole" render={({ field }) => (
+                          <FormItem><FormLabel>Rol</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un rol" /></SelectTrigger></FormControl>
+                              <SelectContent><SelectItem value="Coach">Entrenador</SelectItem><SelectItem value="SalesAdvisor">Asesor de Ventas</SelectItem></SelectContent>
+                            </Select><FormMessage />
+                          </FormItem>
+                        )} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField control={form.control} name="sessionDate" render={({ field }) => ( <FormItem><FormLabel>Fecha de la Sesión</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="energyCheckIn" render={({ field }) => ( <FormItem><FormLabel>Nivel de Energía (1-10)</FormLabel><FormControl><Input type="number" min="1" max="10" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                      </div>
+                       <FormField control={form.control} name="mainWin" render={({ field }) => ( <FormItem><FormLabel>Logro Principal</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+                      <FormField control={form.control} name="opportunityForImprovement" render={({ field }) => ( <FormItem><FormLabel>Oportunidad de Mejora</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+                      <FormField control={form.control} name="actionPlan" render={({ field }) => ( <FormItem><FormLabel>Plan de Acción</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+                      <DialogFooter><Button type="submit" disabled={isLoading}>{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Guardar Sesión</Button></DialogFooter>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            )}
+        </div>
       </div>
 
       {role === 'CEO' && (
         <div className="pb-4">
           <Select onValueChange={(value: SiteId) => setSelectedSite(value)} value={selectedSite}>
-            <SelectTrigger className="w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
             <SelectContent>
               {sites.map(site => (
                   <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
