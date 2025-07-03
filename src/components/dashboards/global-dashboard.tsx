@@ -3,11 +3,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Site, SiteId, DailyReport } from '@/lib/types';
+import type { Site, SiteId, DailyReport, MonthlyHistory } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
 import { Info, Loader2, Pencil, RefreshCw } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { getDay, getDate, getDaysInMonth } from 'date-fns';
+import { getDay, getDate, getDaysInMonth, format, parse } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,8 +17,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot, doc, updateDoc, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, getDocs, limit, orderBy, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { Progress } from '@/components/ui/progress';
+import { useAuth } from '@/lib/auth';
 
 const kpiSchema = z.object({
   revenue: z.coerce.number().min(0, "Las ventas deben ser un número positivo."),
@@ -79,6 +80,7 @@ function calculateMonthProgress(today: Date) {
 
 
 export function GlobalDashboard() {
+  const { role } = useAuth();
   const [kpiData, setKpiData] = useState<Record<SiteId, Site>>({} as Record<SiteId, Site>);
   const [isKpiLoading, setIsKpiLoading] = useState(true);
   const [forecasts, setForecasts] = useState<Record<SiteId, GenerateSalesForecastOutput | null>>({});
@@ -94,6 +96,90 @@ export function GlobalDashboard() {
   });
 
   const siteMap = useMemo(() => new Map(Object.values(kpiData).map(s => [s.id, s.name])), [kpiData]);
+
+  // Monthly Reset and Archive Logic for CEO
+  useEffect(() => {
+    if (role !== 'CEO') return;
+
+    const runMonthlyResetCheck = async () => {
+      const statusRef = doc(db, 'settings', 'app-status');
+      const now = new Date();
+      const currentMonthStr = format(now, 'yyyy-MM');
+
+      try {
+        const statusDoc = await getDoc(statusRef);
+
+        if (!statusDoc.exists()) {
+          await setDoc(statusRef, { lastResetMonth: currentMonthStr });
+          console.log('Initialized monthly reset status.');
+          return;
+        }
+
+        const { lastResetMonth } = statusDoc.data();
+
+        if (lastResetMonth < currentMonthStr) {
+          toast({
+            title: "Procesando cierre de mes...",
+            description: "Archivando reportes y reiniciando contadores. Esto puede tardar un momento.",
+          });
+
+          const sitesSnapshot = await getDocs(collection(db, 'sites'));
+          if (sitesSnapshot.empty) {
+            await setDoc(statusRef, { lastResetMonth: currentMonthStr });
+            return;
+          }
+          
+          const batch = writeBatch(db);
+          const previousMonthDate = parse(lastResetMonth, 'yyyy-MM', new Date());
+
+          sitesSnapshot.forEach(siteDoc => {
+            const siteData = siteDoc.data() as Site;
+
+            const historyDocRef = doc(db, 'monthly-history', `${siteDoc.id}_${lastResetMonth}`);
+            const historyData: MonthlyHistory = {
+              siteId: siteDoc.id,
+              siteName: siteData.name,
+              year: previousMonthDate.getFullYear(),
+              month: previousMonthDate.getMonth() + 1,
+              finalRevenue: siteData.revenue,
+              finalRetention: siteData.retention,
+              finalNps: siteData.nps,
+              finalAverageTicket: siteData.averageTicket,
+              monthlyGoal: siteData.monthlyGoal,
+            };
+            batch.set(historyDocRef, historyData);
+
+            const siteRef = doc(db, 'sites', siteDoc.id);
+            batch.update(siteRef, {
+              revenue: 0,
+              retention: 0,
+              nps: 0,
+              averageTicket: 0,
+            });
+          });
+          
+          batch.set(statusRef, { lastResetMonth: currentMonthStr });
+          await batch.commit();
+
+          toast({
+            title: "¡Cierre de mes completado!",
+            description: "Los contadores de las sedes se han reiniciado para el nuevo mes.",
+            duration: 8000
+          });
+        }
+      } catch (error) {
+        console.error("Error during monthly reset check:", error);
+        toast({
+          variant: 'destructive',
+          title: "Error en el reinicio mensual",
+          description: "No se pudieron reiniciar los contadores. Por favor contacta a soporte."
+        });
+      }
+    };
+
+    runMonthlyResetCheck();
+  }, [role, toast]);
+
 
   const fetchAndCacheForecasts = React.useCallback(async () => {
     if (Object.keys(kpiData).length === 0) return;

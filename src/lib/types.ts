@@ -13,7 +13,7 @@ export interface User {
 
 export interface Site {
   id: SiteId;
-  name: string;
+  name:string;
   revenue: number;
   monthlyGoal: number;
   retention: number;
@@ -65,4 +65,16 @@ export interface EvidenceDocument {
   fileType: "image" | "pdf";
   category: EvidenceCategory;
   uploadedAt: Timestamp;
+}
+
+export interface MonthlyHistory {
+  siteId: SiteId;
+  siteName: string;
+  year: number;
+  month: number; // 1-12
+  finalRevenue: number;
+  finalRetention: number;
+  finalNps: number;
+  finalAverageTicket: number;
+  monthlyGoal: number;
 }
