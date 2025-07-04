@@ -1,10 +1,10 @@
 
 'use server';
 import { google } from 'googleapis';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import type { Site } from '@/lib/types';
 
+// The range K2:P3 will be fetched, but we'll assume the relevant
+// NPS value is always in the first cell of the second row of the range (K3).
 const SPREADSHEET_DATA_RANGE = 'K2:P3';
 
 export async function getMonthlyNpsForSite(site: Site): Promise<number> {
@@ -36,27 +36,17 @@ export async function getMonthlyNpsForSite(site: Site): Promise<number> {
     });
 
     const rows = response.data.values;
-    if (!rows || rows.length < 2) {
-      throw new Error('No se encontraron suficientes datos en la hoja de cálculo.');
+    // Check if we got at least two rows and the second row has at least one cell.
+    if (!rows || rows.length < 2 || !rows[1] || rows[1].length < 1) {
+      throw new Error('No se encontraron suficientes datos en el rango esperado de la hoja de cálculo.');
     }
 
-    const [headerRow, valueRow] = rows;
-    const currentMonthName = format(new Date(), 'MMMM', { locale: es });
-    
-    // Find the column index for the current month by checking if the header includes the month name
-    const monthIndex = headerRow.findIndex(
-      (header: string) => header.trim().toLowerCase().includes(currentMonthName.toLowerCase())
-    );
-
-    if (monthIndex === -1) {
-      throw new Error(`No se encontró la columna para el mes de ${currentMonthName} en la hoja de cálculo.`);
-    }
-
-    const npsValueString = valueRow[monthIndex]?.replace(',', '.').trim() || '0';
+    // The first cell of the second row (K3) is assumed to hold the current month's NPS.
+    const npsValueString = rows[1][0]?.replace(',', '.').trim() || '0';
     const npsValue = parseFloat(npsValueString);
     
     if (isNaN(npsValue)) {
-      throw new Error(`El valor de NPS para ${currentMonthName} ("${valueRow[monthIndex]}") no es un número válido.`);
+      throw new Error(`El valor de NPS obtenido ("${rows[1][0]}") no es un número válido.`);
     }
 
     return npsValue;
@@ -72,7 +62,12 @@ export async function getMonthlyNpsForSite(site: Site): Promise<number> {
         if (error.message.includes('Requested entity was not found')) {
             throw new Error(`No se encontró la hoja de cálculo con ID: ${site.spreadsheetId}. Verifica el ID.`);
         }
+        // Propagate my custom errors
+        if (error.message.startsWith('No se encontraron suficientes datos') || error.message.startsWith('El valor de NPS obtenido')) {
+            throw error;
+        }
     }
+    // Generic fallback error
     throw new Error('No se pudo obtener el valor de NPS desde Google Sheets.');
   }
 }
