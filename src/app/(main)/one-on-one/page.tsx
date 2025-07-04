@@ -19,7 +19,7 @@ import { Loader2, PlusCircle, Eye } from 'lucide-react';
 import type { OneOnOneSession, EmployeeRole, SiteId, Site } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const sessionSchema = z.object({
   employeeName: z.string().min(2, "El nombre es muy corto."),
@@ -41,8 +41,8 @@ export default function OneOnOnePage() {
   const [sessions, setSessions] = useState<OneOnOneSession[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
-  const [selectedSite, setSelectedSite] = useState<SiteId>(user?.siteId || '');
+  const [isFetching, setIsFetching] = useState(false);
+  const [selectedSite, setSelectedSite] = useState<SiteId | ''>(role === 'CEO' ? '' : user!.siteId!);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState<OneOnOneSession | null>(null);
   const { toast } = useToast();
@@ -55,55 +55,39 @@ export default function OneOnOnePage() {
   });
 
   useEffect(() => {
-    async function fetchInitialData() {
-        if (!user) return;
+    if (role === 'CEO') {
+      const fetchSites = async () => {
+        const sitesSnapshot = await getDocs(collection(db, 'sites'));
+        setSites(sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site)));
+      };
+      fetchSites();
+    }
+  }, [role]);
+
+  useEffect(() => {
+    async function fetchSessions() {
+        if (!selectedSite) {
+            setSessions([]);
+            return;
+        }
         setIsFetching(true);
         try {
-            if (role === 'CEO') {
-                const sitesSnapshot = await getDocs(collection(db, 'sites'));
-                const sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
-                setSites(sitesData);
-                if (sitesData.length > 0) {
-                    setSelectedSite(sitesData[0].id);
-                }
-            }
-    
             const sessionsRef = collection(db, 'one-on-one-sessions');
-            let q;
-    
-            if (role === 'CEO') {
-                q = query(sessionsRef, orderBy('createdAt', 'desc'));
-            } else {
-                // Query without ordering to avoid composite index requirement
-                q = query(sessionsRef, where('siteId', '==', user.siteId));
-            }
-    
+            const q = query(sessionsRef, where('siteId', '==', selectedSite));
             const querySnapshot = await getDocs(q);
             const fetchedSessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OneOnOneSession));
-            
-            // Sort client-side if the query didn't include ordering
-            if (role !== 'CEO') {
-              fetchedSessions.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-            }
 
+            fetchedSessions.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
             setSessions(fetchedSessions);
         } catch (error) {
-            console.error("Error fetching data:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar los datos.' });
+            console.error("Error fetching sessions:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar las sesiones.' });
         } finally {
             setIsFetching(false);
         }
-    };
-
-    fetchInitialData();
-  }, [user, role, toast]);
-  
-  useEffect(() => {
-    if (role === 'CEO' && sites.length > 0 && !selectedSite) {
-        setSelectedSite(sites[0].id)
     }
-  }, [sites, role, selectedSite]);
-
+    fetchSessions();
+  }, [selectedSite, toast]);
 
   async function onSubmit(values: z.infer<typeof sessionSchema>) {
     if (!user || !user.siteId) return;
@@ -131,11 +115,6 @@ export default function OneOnOnePage() {
     }
   }
 
-  const filteredSessions = sessions.filter(s => {
-    if (role === 'CEO') return s.siteId === selectedSite;
-    return s.siteId === user?.siteId;
-  });
-
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   return (
@@ -144,7 +123,7 @@ export default function OneOnOnePage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Sesiones 1-a-1</h2>
           {role === 'CEO' 
-            ? <p className="text-muted-foreground">Revisa las sesiones de las diferentes sedes.</p>
+            ? <p className="text-muted-foreground">Revisa las sesiones de una sede específica.</p>
             : <p className="text-muted-foreground">Registra y consulta tus sesiones 1-a-1.</p>
           }
         </div>
@@ -189,7 +168,7 @@ export default function OneOnOnePage() {
       {role === 'CEO' && (
         <div className="pb-4">
           <Select onValueChange={(value: SiteId) => setSelectedSite(value)} value={selectedSite}>
-            <SelectTrigger className="w-full sm:w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[280px]"><SelectValue placeholder="Selecciona una sede para ver" /></SelectTrigger>
             <SelectContent>
               {sites.map(site => (
                   <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
@@ -206,49 +185,19 @@ export default function OneOnOnePage() {
           <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>
         ) : (
           <>
-            {/* Mobile View */}
-            <div className="space-y-4 md:hidden">
-              {filteredSessions.length === 0 && <p className="text-center text-muted-foreground pt-8">No hay sesiones registradas.</p>}
-              {filteredSessions.map((session) => (
-                <Card key={session.id}>
-                  <CardHeader className="p-4 flex flex-row items-center justify-between">
-                      <div>
-                          <CardTitle className="text-base">{session.employeeName}</CardTitle>
-                          <CardDescription>{employeeRoleText[session.employeeRole]} - {format(new Date(session.sessionDate.replace(/-/g, '/')), 'PPP', { locale: es })}</CardDescription>
-                      </div>
-                      <Dialog onOpenChange={(open) => !open && setSelectedSession(null)}>
-                        <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedSession(session)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
-                        <DialogContent className="sm:max-w-[625px]">
-                          <DialogHeader>
-                            <DialogTitle>Sesión con {selectedSession?.employeeName}</DialogTitle>
-                            <DialogDescription>Detalles de la sesión del {selectedSession && format(new Date(selectedSession.sessionDate.replace(/-/g, '/')), 'PPP', { locale: es })}</DialogDescription>
-                          </DialogHeader>
-                          {selectedSession && <div className="space-y-4 py-4 text-sm">
-                            <div><p className="font-semibold">Nivel de Energía</p><p className="text-muted-foreground">{selectedSession.energyCheckIn}/10</p></div>
-                            <div><p className="font-semibold">Logro Principal</p><p className="text-muted-foreground">{selectedSession.mainWin}</p></div>
-                            <div><p className="font-semibold">Oportunidad de Mejora</p><p className="text-muted-foreground">{selectedSession.opportunityForImprovement}</p></div>
-                            <div><p className="font-semibold">Plan de Acción</p><p className="text-muted-foreground">{selectedSession.actionPlan}</p></div>
-                          </div>}
-                          <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-
-            {/* Desktop View */}
-            <div className="hidden md:block">
-              <Table>
-                <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Empleado</TableHead><TableHead>Rol</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {filteredSessions.length === 0 && <TableRow><TableCell colSpan={4} className="h-24 text-center">No hay sesiones registradas.</TableCell></TableRow>}
-                  {filteredSessions.map((session) => (
-                    <TableRow key={session.id}>
-                      <TableCell>{format(new Date(session.sessionDate.replace(/-/g, '/')), 'PPP', { locale: es })}</TableCell>
-                      <TableCell className="font-medium">{session.employeeName}</TableCell>
-                      <TableCell>{employeeRoleText[session.employeeRole]}</TableCell>
-                      <TableCell className="text-right">
+            {role === 'CEO' && !selectedSite && <div className="text-center text-muted-foreground p-8">Por favor, selecciona una sede para ver las sesiones.</div>}
+            {((role === 'CEO' && selectedSite) || role === 'SiteLeader') && (
+            <>
+              {/* Mobile View */}
+              <div className="space-y-4 md:hidden">
+                {sessions.length === 0 && <p className="text-center text-muted-foreground pt-8">No hay sesiones registradas para esta sede.</p>}
+                {sessions.map((session) => (
+                  <Card key={session.id}>
+                    <CardHeader className="p-4 flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="text-base">{session.employeeName}</CardTitle>
+                            <CardDescription>{employeeRoleText[session.employeeRole]} - {format(new Date(session.sessionDate.replace(/-/g, '/')), 'PPP', { locale: es })}</CardDescription>
+                        </div>
                         <Dialog onOpenChange={(open) => !open && setSelectedSession(null)}>
                           <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedSession(session)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
                           <DialogContent className="sm:max-w-[625px]">
@@ -265,12 +214,47 @@ export default function OneOnOnePage() {
                             <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
                           </DialogContent>
                         </Dialog>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Desktop View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Empleado</TableHead><TableHead>Rol</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {sessions.length === 0 && <TableRow><TableCell colSpan={4} className="h-24 text-center">No hay sesiones registradas para esta sede.</TableCell></TableRow>}
+                    {sessions.map((session) => (
+                      <TableRow key={session.id}>
+                        <TableCell>{format(new Date(session.sessionDate.replace(/-/g, '/')), 'PPP', { locale: es })}</TableCell>
+                        <TableCell className="font-medium">{session.employeeName}</TableCell>
+                        <TableCell>{employeeRoleText[session.employeeRole]}</TableCell>
+                        <TableCell className="text-right">
+                          <Dialog onOpenChange={(open) => !open && setSelectedSession(null)}>
+                            <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedSession(session)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
+                            <DialogContent className="sm:max-w-[625px]">
+                              <DialogHeader>
+                                <DialogTitle>Sesión con {selectedSession?.employeeName}</DialogTitle>
+                                <DialogDescription>Detalles de la sesión del {selectedSession && format(new Date(selectedSession.sessionDate.replace(/-/g, '/')), 'PPP', { locale: es })}</DialogDescription>
+                              </DialogHeader>
+                              {selectedSession && <div className="space-y-4 py-4 text-sm">
+                                <div><p className="font-semibold">Nivel de Energía</p><p className="text-muted-foreground">{selectedSession.energyCheckIn}/10</p></div>
+                                <div><p className="font-semibold">Logro Principal</p><p className="text-muted-foreground">{selectedSession.mainWin}</p></div>
+                                <div><p className="font-semibold">Oportunidad de Mejora</p><p className="text-muted-foreground">{selectedSession.opportunityForImprovement}</p></div>
+                                <div><p className="font-semibold">Plan de Acción</p><p className="text-muted-foreground">{selectedSession.actionPlan}</p></div>
+                              </div>}
+                              <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+            )}
           </>
           )}
         </CardContent>

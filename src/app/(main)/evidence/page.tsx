@@ -22,7 +22,7 @@ import type { EvidenceDocument, SiteId, EvidenceCategory, Site, OneOnOneSession 
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db, storage } from '@/lib/firebase';
-import { collection, query, getDocs, addDoc, serverTimestamp, orderBy, QuerySnapshot, DocumentData, where } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, serverTimestamp, orderBy, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const evidenceSchema = z.object({
@@ -58,8 +58,8 @@ export default function EvidencePage() {
   const [documents, setDocuments] = useState<EvidenceDocument[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [oneOnOneSessions, setOneOnOneSessions] = useState<OneOnOneSession[]>([]);
-  const [isFetching, setIsFetching] = useState(true);
-  const [selectedSite, setSelectedSite] = useState<SiteId | 'global'>(role === 'CEO' ? 'global' : user!.siteId!);
+  const [isFetching, setIsFetching] = useState(false);
+  const [selectedSite, setSelectedSite] = useState<SiteId | ''>(role === 'CEO' ? '' : user!.siteId!);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<EvidenceDocument | null>(null);
@@ -68,69 +68,53 @@ export default function EvidencePage() {
   const form = useForm<z.infer<typeof evidenceSchema>>({ resolver: zodResolver(evidenceSchema) });
 
   useEffect(() => {
-    async function fetchInitialData() {
-        if (!user) return;
-        setIsFetching(true);
-        
-        try {
-            const evidencePromises: Promise<QuerySnapshot<DocumentData>>[] = [];
-            
-            if (role === 'CEO') {
-                const sitesSnapshot = await getDocs(collection(db, 'sites'));
-                const sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
-                setSites(sitesData);
-                
-                sitesData.forEach(site => {
-                    const evidenceRef = collection(db, 'sites', site.id, 'evidence');
-                    evidencePromises.push(getDocs(query(evidenceRef, orderBy('uploadedAt', 'desc'))));
-                });
-            } else { // Site Leader
-                 if (user.siteId) {
-                    const evidenceRef = collection(db, 'sites', user.siteId, 'evidence');
-                    evidencePromises.push(getDocs(query(evidenceRef, orderBy('uploadedAt', 'desc'))));
+    if (!user) return;
 
-                    // Fetch 1-on-1 sessions for the dropdown
-                    const sessionsRef = collection(db, 'one-on-one-sessions');
-                    const sessionsQuery = query(sessionsRef, where('siteId', '==', user.siteId));
-                    const sessionsSnapshot = await getDocs(sessionsQuery);
-                    const fetchedSessions = sessionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OneOnOneSession));
-                    
-                    fetchedSessions.sort((a, b) => {
-                      if (a.createdAt && b.createdAt) {
-                        return b.createdAt.toMillis() - a.createdAt.toMillis();
-                      }
-                      return 0;
-                    });
-                    setOneOnOneSessions(fetchedSessions);
-                 }
-            }
+    async function fetchSupportData() {
+      if (role === 'CEO') {
+        const sitesSnapshot = await getDocs(collection(db, 'sites'));
+        const sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
+        setSites(sitesData);
+      } else if (user.siteId) {
+        const sessionsRef = collection(db, 'one-on-one-sessions');
+        const sessionsQuery = query(sessionsRef, where('siteId', '==', user.siteId), orderBy('createdAt', 'desc'));
+        const sessionsSnapshot = await getDocs(sessionsQuery);
+        const fetchedSessions = sessionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OneOnOneSession));
+        setOneOnOneSessions(fetchedSessions);
+      }
+    }
+    fetchSupportData();
+  }, [user, role]);
 
-            const evidenceSnapshots = await Promise.all(evidencePromises);
-            const allDocs: EvidenceDocument[] = [];
-            evidenceSnapshots.forEach(snapshot => {
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                     allDocs.push({ 
-                        id: doc.id,
-                        ...data,
-                        uploadedAt: data.uploadedAt.toDate()
-                    } as EvidenceDocument);
-                });
-            });
-
-            allDocs.sort((a, b) => (b.uploadedAt as any) - (a.uploadedAt as any));
-            setDocuments(allDocs);
-
-        } catch (error) {
-            console.error("Error fetching documents: ", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar los documentos.' });
-        } finally {
-            setIsFetching(false);
-        }
-    };
-
-    fetchInitialData();
-  }, [user, role, toast]);
+  useEffect(() => {
+    async function fetchDocuments() {
+      if (!selectedSite) {
+        setDocuments([]);
+        return;
+      }
+      setIsFetching(true);
+      try {
+        const evidenceRef = collection(db, 'sites', selectedSite, 'evidence');
+        const q = query(evidenceRef, orderBy('uploadedAt', 'desc'));
+        const snapshot = await getDocs(q);
+        const docsData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            uploadedAt: data.uploadedAt.toDate()
+          } as EvidenceDocument;
+        });
+        setDocuments(docsData);
+      } catch (error) {
+        console.error("Error fetching documents: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar los documentos.' });
+      } finally {
+        setIsFetching(false);
+      }
+    }
+    fetchDocuments();
+  }, [selectedSite, toast]);
 
   const siteMap = React.useMemo(() => new Map(sites.map(s => [s.id, s.name])), [sites]);
 
@@ -173,14 +157,6 @@ export default function EvidencePage() {
         setIsLoading(false);
     }
   }
-
-  const filteredDocuments = React.useMemo(() => {
-    if (role === 'CEO') {
-      if (selectedSite === 'global') return documents;
-      return documents.filter(p => p.siteId === selectedSite);
-    }
-    return documents;
-  }, [documents, role, selectedSite]);
   
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
@@ -190,7 +166,7 @@ export default function EvidencePage() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Gestión Documental</h2>
           <p className="text-muted-foreground">
-            {role === 'CEO' ? 'Revisa las evidencias de todas las sedes.' : 'Sube y gestiona las evidencias de tu sede.'}
+            {role === 'CEO' ? 'Revisa las evidencias de una sede específica.' : 'Sube y gestiona las evidencias de tu sede.'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -260,10 +236,9 @@ export default function EvidencePage() {
       
       {role === 'CEO' && (
         <div className="pb-4">
-          <Select onValueChange={(value: any) => setSelectedSite(value)} defaultValue={selectedSite}>
-            <SelectTrigger className="w-full sm:w-[280px]"><SelectValue placeholder="Selecciona una sede" /></SelectTrigger>
+          <Select onValueChange={(value: SiteId) => setSelectedSite(value)} value={selectedSite}>
+            <SelectTrigger className="w-full sm:w-[280px]"><SelectValue placeholder="Selecciona una sede para ver" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="global">Todas las Sedes</SelectItem>
               {sites.map(site => (
                 <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
               ))}
@@ -282,107 +257,112 @@ export default function EvidencePage() {
           <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin" /></div>
         ) : (
           <>
-            {/* Mobile View */}
-            <div className="space-y-4 md:hidden">
-              {filteredDocuments.length === 0 && <p className="text-center text-muted-foreground pt-8">No hay documentos.</p>}
-              {filteredDocuments.map((doc) => (
-                <Card key={doc.id}>
-                  <CardHeader className="p-4 flex flex-row items-start justify-between">
-                    <div className="flex-1 pr-4">
-                      <CardTitle className="text-base leading-tight">{doc.title}</CardTitle>
-                      <CardDescription className="pt-1">
-                        {role === 'CEO' ? `${siteMap.get(doc.siteId) || doc.siteId} - ` : ''}
-                        {format(doc.uploadedAt as Date, 'PPP', { locale: es })}
-                      </CardDescription>
-                    </div>
-                     <Dialog onOpenChange={(open) => !open && setSelectedDocument(null)}>
-                      <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedDocument(doc)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
-                      <DialogContent className="sm:max-w-[625px]">
-                        <DialogHeader><DialogTitle>{selectedDocument?.title}</DialogTitle><DialogDescription>{selectedDocument && categoryText[selectedDocument.category]} - Subido el {selectedDocument && format(selectedDocument.uploadedAt as Date, 'PPP', { locale: es })}</DialogDescription></DialogHeader>
-                        {selectedDocument && <div className="space-y-4 py-4 text-sm">
-                          <div><p className="font-semibold">Descripción</p><p className="text-muted-foreground">{selectedDocument.description}</p></div>
-                          <div><p className="font-semibold">Archivo</p><p className="text-muted-foreground"><a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{selectedDocument.fileName}</a></p></div>
-                          <div className="font-semibold">Vista Previa</div>
-                          <div className="rounded-md border p-4 h-80 flex items-center justify-center bg-muted/50">
-                            {selectedDocument.fileType === 'image' ? (
-                                <Image src={selectedDocument.fileUrl} alt={`Vista previa de ${selectedDocument.title}`} width={400} height={300} className="max-h-full w-auto object-contain rounded-md" />
-                            ) : (
-                                <div className="text-center text-muted-foreground flex flex-col items-center gap-4">
-                                    <FileText className="mx-auto h-24 w-24" />
-                                    <div>
-                                        <p>No hay vista previa disponible para archivos PDF.</p>
-                                        <a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">
-                                            Descargar o abrir archivo
-                                        </a>
-                                    </div>
-                                </div>
-                            )}
-                          </div>
-                        </div>}
-                        <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <Badge className={cn("capitalize", categoryColors[doc.category])} variant="outline">{categoryText[doc.category]}</Badge>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {role === 'CEO' && !selectedSite && <div className="text-center text-muted-foreground p-8">Por favor, selecciona una sede para ver las evidencias.</div>}
+            {((role === 'CEO' && selectedSite) || role === 'SiteLeader') && (
+            <>
+              {/* Mobile View */}
+              <div className="space-y-4 md:hidden">
+                {documents.length === 0 && <p className="text-center text-muted-foreground pt-8">No hay documentos para esta sede.</p>}
+                {documents.map((doc) => (
+                  <Card key={doc.id}>
+                    <CardHeader className="p-4 flex flex-row items-start justify-between">
+                      <div className="flex-1 pr-4">
+                        <CardTitle className="text-base leading-tight">{doc.title}</CardTitle>
+                        <CardDescription className="pt-1">
+                          {role === 'CEO' ? `${siteMap.get(doc.siteId) || doc.siteId} - ` : ''}
+                          {format(doc.uploadedAt as Date, 'PPP', { locale: es })}
+                        </CardDescription>
+                      </div>
+                      <Dialog onOpenChange={(open) => !open && setSelectedDocument(null)}>
+                        <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedDocument(doc)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
+                        <DialogContent className="sm:max-w-[625px]">
+                          <DialogHeader><DialogTitle>{selectedDocument?.title}</DialogTitle><DialogDescription>{selectedDocument && categoryText[selectedDocument.category]} - Subido el {selectedDocument && format(selectedDocument.uploadedAt as Date, 'PPP', { locale: es })}</DialogDescription></DialogHeader>
+                          {selectedDocument && <div className="space-y-4 py-4 text-sm">
+                            <div><p className="font-semibold">Descripción</p><p className="text-muted-foreground">{selectedDocument.description}</p></div>
+                            <div><p className="font-semibold">Archivo</p><p className="text-muted-foreground"><a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{selectedDocument.fileName}</a></p></div>
+                            <div className="font-semibold">Vista Previa</div>
+                            <div className="rounded-md border p-4 h-80 flex items-center justify-center bg-muted/50">
+                              {selectedDocument.fileType === 'image' ? (
+                                  <Image src={selectedDocument.fileUrl} alt={`Vista previa de ${selectedDocument.title}`} width={400} height={300} className="max-h-full w-auto object-contain rounded-md" />
+                              ) : (
+                                  <div className="text-center text-muted-foreground flex flex-col items-center gap-4">
+                                      <FileText className="mx-auto h-24 w-24" />
+                                      <div>
+                                          <p>No hay vista previa disponible para archivos PDF.</p>
+                                          <a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">
+                                              Descargar o abrir archivo
+                                          </a>
+                                      </div>
+                                  </div>
+                              )}
+                            </div>
+                          </div>}
+                          <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <Badge className={cn("capitalize", categoryColors[doc.category])} variant="outline">{categoryText[doc.category]}</Badge>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
 
-            {/* Desktop View */}
-            <div className="hidden md:block">
-              <Table>
-                <TableHeader><TableRow>
-                    <TableHead>Título</TableHead>
-                    {role === 'CEO' && <TableHead>Sede</TableHead>}
-                    <TableHead>Categoría</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                </TableRow></TableHeader>
-                <TableBody>
-                  {filteredDocuments.length === 0 && <TableRow><TableCell colSpan={role === 'CEO' ? 5: 4} className="h-24 text-center">No hay documentos.</TableCell></TableRow>}
-                  {filteredDocuments.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell className="font-medium">{doc.title}</TableCell>
-                      {role === 'CEO' && <TableCell>{siteMap.get(doc.siteId) || doc.siteId}</TableCell>}
-                      <TableCell><Badge className={cn("capitalize", categoryColors[doc.category])} variant="outline">{categoryText[doc.category]}</Badge></TableCell>
-                      <TableCell>{format(doc.uploadedAt as Date, 'PPP', { locale: es })}</TableCell>
-                      <TableCell className="text-right">
-                        <Dialog onOpenChange={(open) => !open && setSelectedDocument(null)}>
-                          <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedDocument(doc)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
-                          <DialogContent className="sm:max-w-[625px]">
-                            <DialogHeader><DialogTitle>{selectedDocument?.title}</DialogTitle><DialogDescription>{selectedDocument && categoryText[selectedDocument.category]} - Subido el {selectedDocument && format(selectedDocument.uploadedAt as Date, 'PPP', { locale: es })}</DialogDescription></DialogHeader>
-                            {selectedDocument && <div className="space-y-4 py-4 text-sm">
-                              <div><p className="font-semibold">Descripción</p><p className="text-muted-foreground">{selectedDocument.description}</p></div>
-                              <div><p className="font-semibold">Archivo</p><p className="text-muted-foreground"><a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{selectedDocument.fileName}</a></p></div>
-                              
-                              <div className="font-semibold">Vista Previa</div>
-                              <div className="rounded-md border p-4 h-80 flex items-center justify-center bg-muted/50">
-                                {selectedDocument.fileType === 'image' ? (
-                                    <Image src={selectedDocument.fileUrl} alt={`Vista previa de ${selectedDocument.title}`} width={400} height={300} className="max-h-full w-auto object-contain rounded-md" />
-                                ) : (
-                                    <div className="text-center text-muted-foreground flex flex-col items-center gap-4">
-                                        <FileText className="mx-auto h-24 w-24" />
-                                        <div>
-                                            <p>No hay vista previa disponible para archivos PDF.</p>
-                                            <a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">
-                                                Descargar o abrir archivo
-                                            </a>
-                                        </div>
-                                    </div>
-                                )}
-                              </div>
-                            </div>}
-                            <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
-                          </DialogContent>
-                        </Dialog>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+              {/* Desktop View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader><TableRow>
+                      <TableHead>Título</TableHead>
+                      {role === 'CEO' && <TableHead>Sede</TableHead>}
+                      <TableHead>Categoría</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {documents.length === 0 && <TableRow><TableCell colSpan={role === 'CEO' ? 5: 4} className="h-24 text-center">No hay documentos para esta sede.</TableCell></TableRow>}
+                    {documents.map((doc) => (
+                      <TableRow key={doc.id}>
+                        <TableCell className="font-medium">{doc.title}</TableCell>
+                        {role === 'CEO' && <TableCell>{siteMap.get(doc.siteId) || doc.siteId}</TableCell>}
+                        <TableCell><Badge className={cn("capitalize", categoryColors[doc.category])} variant="outline">{categoryText[doc.category]}</Badge></TableCell>
+                        <TableCell>{format(doc.uploadedAt as Date, 'PPP', { locale: es })}</TableCell>
+                        <TableCell className="text-right">
+                          <Dialog onOpenChange={(open) => !open && setSelectedDocument(null)}>
+                            <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedDocument(doc)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
+                            <DialogContent className="sm:max-w-[625px]">
+                              <DialogHeader><DialogTitle>{selectedDocument?.title}</DialogTitle><DialogDescription>{selectedDocument && categoryText[selectedDocument.category]} - Subido el {selectedDocument && format(selectedDocument.uploadedAt as Date, 'PPP', { locale: es })}</DialogDescription></DialogHeader>
+                              {selectedDocument && <div className="space-y-4 py-4 text-sm">
+                                <div><p className="font-semibold">Descripción</p><p className="text-muted-foreground">{selectedDocument.description}</p></div>
+                                <div><p className="font-semibold">Archivo</p><p className="text-muted-foreground"><a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{selectedDocument.fileName}</a></p></div>
+                                
+                                <div className="font-semibold">Vista Previa</div>
+                                <div className="rounded-md border p-4 h-80 flex items-center justify-center bg-muted/50">
+                                  {selectedDocument.fileType === 'image' ? (
+                                      <Image src={selectedDocument.fileUrl} alt={`Vista previa de ${selectedDocument.title}`} width={400} height={300} className="max-h-full w-auto object-contain rounded-md" />
+                                  ) : (
+                                      <div className="text-center text-muted-foreground flex flex-col items-center gap-4">
+                                          <FileText className="mx-auto h-24 w-24" />
+                                          <div>
+                                              <p>No hay vista previa disponible para archivos PDF.</p>
+                                              <a href={selectedDocument.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">
+                                                  Descargar o abrir archivo
+                                              </a>
+                                          </div>
+                                      </div>
+                                  )}
+                                </div>
+                              </div>}
+                              <DialogFooter><DialogClose asChild><Button>Cerrar</Button></DialogClose></DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+            )}
           </>
           )}
         </CardContent>

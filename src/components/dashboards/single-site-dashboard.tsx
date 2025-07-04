@@ -97,6 +97,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
     const [isRecalculating, setIsRecalculating] = useState(false);
     const { toast } = useToast();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const kpiForm = useForm<z.infer<typeof kpiSchema>>({
         resolver: zodResolver(kpiSchema),
@@ -203,7 +204,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
 
     const handleKpiSubmit = async (values: z.infer<typeof kpiSchema>) => {
         if (!siteId || !kpiData) return;
-        
+        setIsSubmitting(true);
         const siteRef = doc(db, "sites", siteId);
         try {
           await updateDoc(siteRef, {
@@ -222,6 +223,8 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
             title: 'Error',
             description: `No se pudo actualizar los KPIs.`,
           });
+        } finally {
+          setIsSubmitting(false);
         }
       };
 
@@ -266,7 +269,12 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                                     <form onSubmit={kpiForm.handleSubmit(handleKpiSubmit)} className="space-y-4 py-4">
                                         <FormField control={kpiForm.control} name="revenue" render={({ field }) => ( <FormItem><FormLabel>Ventas a la Fecha (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
                                         <FormField control={kpiForm.control} name="monthlyGoal" render={({ field }) => ( <FormItem><FormLabel>Nueva Meta Mensual (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                        <DialogFooter><Button type="submit">Guardar Cambios</Button></DialogFooter>
+                                        <DialogFooter>
+                                            <Button type="submit" disabled={isSubmitting}>
+                                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Guardar Cambios
+                                            </Button>
+                                        </DialogFooter>
                                     </form>
                                     </Form>
                                 </DialogContent>
