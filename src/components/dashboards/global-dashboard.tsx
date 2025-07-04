@@ -333,7 +333,7 @@ export function GlobalDashboard() {
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS Promedio (Global)</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{globalSummary.nps.toFixed(2)}</div></CardContent>
+                <CardContent><div className="text-2xl font-bold">{(Math.trunc(globalSummary.nps * 100) / 100).toFixed(2)}</div></CardContent>
             </Card>
         </div>
 
@@ -353,9 +353,11 @@ export function GlobalDashboard() {
                                         Meta: {formatCurrency(data.monthlyGoal)}
                                     </CardDescription>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={() => handleOpenEditModal(siteId as SiteId)}>
-                                    <Pencil className="h-4 w-4" />
-                                </Button>
+                                {role === 'CEO' &&
+                                  <Button variant="ghost" size="icon" onClick={() => handleOpenEditModal(siteId as SiteId)}>
+                                      <Pencil className="h-4 w-4" />
+                                  </Button>
+                                }
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -436,7 +438,11 @@ export function GlobalDashboard() {
                         <TableCell className="text-right hidden lg:table-cell">{formatCurrency(data.averageTicket)}</TableCell>
                         <TableCell className="text-right hidden lg:table-cell">{data.retention.toFixed(1)}%</TableCell>
                         <TableCell className="text-right hidden lg:table-cell">{data.nps.toFixed(2)}</TableCell>
-                        <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleOpenEditModal(siteId as SiteId)}><Pencil className="h-4 w-4" /></Button></TableCell>
+                        <TableCell className="text-right">
+                          {role === 'CEO' &&
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenEditModal(siteId as SiteId)}><Pencil className="h-4 w-4" /></Button>
+                          }
+                        </TableCell>
                         </TableRow>
                     );
                     })}

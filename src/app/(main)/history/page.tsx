@@ -158,7 +158,7 @@ export default function HistoryPage() {
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS Promedio</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{globalSummary.nps.toFixed(2)}</div></CardContent>
+                <CardContent><div className="text-2xl font-bold">{(Math.trunc(globalSummary.nps * 100) / 100).toFixed(2)}</div></CardContent>
             </Card>
         </div>
 

@@ -89,8 +89,8 @@ async function getMonthlyNpsForSite(site: Site): Promise<number> {
       throw new Error(`El valor de NPS obtenido ("${values[columnIndex]}") para '${currentMonthName}' no es un número válido.`);
     }
 
-    // Round to two decimal places before returning
-    return parseFloat(npsValue.toFixed(2));
+    // Truncate to two decimal places without rounding before returning
+    return Math.trunc(npsValue * 100) / 100;
     
   } catch (error) {
     console.error(`Error fetching NPS from Google Sheets for site '${site.name}' (ID: ${site.spreadsheetId}):`, error);
