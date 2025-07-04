@@ -48,10 +48,10 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
 
   const form = useForm<z.infer<typeof siteSchema>>({ resolver: zodResolver(siteSchema) });
 
-  const SPREADSHEET_ID_MAP: Record<string, string> = {
-    'piedecuesta': '1RR9WAJZncmnXYw7iCBlS4elELsaO9ZsotlvwWV3kybY',
-    'floridablanca': '1YKaEB2qiiurKdn8m3vpZusnLbgLVaQkXUl52HN7cExk',
-    'ciudadela': '1NuEWKj5QPDvUVW6fNrv6gfDcIn1YPwDzV_o0s-FMztA',
+  const SPREADSHEET_INFO_MAP: Record<string, { id: string, gid: string }> = {
+    'piedecuesta': { id: '1RR9WAJZncmnXYw7iCBlS4elELsaO9ZsotlvwWV3kybY', gid: '1843177115' },
+    'floridablanca': { id: '1YKaEB2qiiurKdn8m3vpZusnLbgLVaQkXUl52HN7cExk', gid: '800954549' },
+    'ciudadela': { id: '1NuEWKj5QPDvUVW6fNrv6gfDcIn1YPwDzV_o0s-FMztA', gid: '531962231' },
   };
 
   const siteLeadersMap = useMemo(() => {
@@ -75,21 +75,36 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
   const handleSiteSubmit = async (values: z.infer<typeof siteSchema>) => {
     setIsSubmitting(true);
     try {
-      const siteNameKey = Object.keys(SPREADSHEET_ID_MAP).find(key => 
+      const siteNameKey = Object.keys(SPREADSHEET_INFO_MAP).find(key => 
         values.name.toLowerCase().includes(key)
       );
-      const spreadsheetId = siteNameKey ? SPREADSHEET_ID_MAP[siteNameKey] : values.spreadsheetId || '';
+      
+      const spreadsheetInfo = siteNameKey ? SPREADSHEET_INFO_MAP[siteNameKey] : null;
+
+      const dataToSave: {
+        name: string;
+        spreadsheetId?: string;
+        spreadsheetGid?: string;
+      } = {
+        name: values.name
+      };
+
+      if (spreadsheetInfo) {
+        dataToSave.spreadsheetId = spreadsheetInfo.id;
+        dataToSave.spreadsheetGid = spreadsheetInfo.gid;
+      } else {
+        dataToSave.spreadsheetId = values.spreadsheetId || '';
+      }
       
       if (editingSite) {
         // Update
         const siteRef = doc(db, "sites", editingSite.id);
-        await updateDoc(siteRef, { name: values.name, spreadsheetId: spreadsheetId });
+        await updateDoc(siteRef, dataToSave);
         toast({ title: "Sede Actualizada", description: "Los datos de la sede han sido actualizados." });
       } else {
         // Create
         await addDoc(collection(db, "sites"), {
-          name: values.name,
-          spreadsheetId: spreadsheetId,
+          ...dataToSave,
           revenue: 0,
           monthlyGoal: 0,
           retention: 0,

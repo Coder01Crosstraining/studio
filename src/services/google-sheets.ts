@@ -34,9 +34,33 @@ async function getMonthlyNpsForSite(site: Site): Promise<number> {
 
     const sheets = google.sheets({ version: 'v4', auth });
 
+    let dataRange = SPREADSHEET_DATA_RANGE;
+
+    // If a GID is provided, find the sheet name and prepend it to the range.
+    if (site.spreadsheetGid) {
+        try {
+            const spreadsheetMeta = await sheets.spreadsheets.get({
+                spreadsheetId: site.spreadsheetId,
+            });
+
+            const targetSheet = spreadsheetMeta.data.sheets?.find(
+                (s) => s.properties?.sheetId?.toString() === site.spreadsheetGid
+            );
+
+            if (targetSheet?.properties?.title) {
+                dataRange = `'${targetSheet.properties.title}'!${SPREADSHEET_DATA_RANGE}`;
+            } else {
+                console.warn(`GID ${site.spreadsheetGid} for site ${site.name} not found in spreadsheet. Falling back to first sheet.`);
+            }
+        } catch (e) {
+            console.error(`Error getting sheet metadata for ${site.name}`, e);
+            // Fallback to default range if metadata fails, but log the error
+        }
+    }
+
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: site.spreadsheetId,
-      range: SPREADSHEET_DATA_RANGE,
+      range: dataRange,
     });
 
     const rows = response.data.values;
@@ -57,13 +81,13 @@ async function getMonthlyNpsForSite(site: Site): Promise<number> {
     return parseFloat(npsValue.toFixed(1));
     
   } catch (error) {
-    console.error('Error fetching NPS from Google Sheets:', error);
+    console.error(`Error fetching NPS from Google Sheets for site '${site.name}' (ID: ${site.spreadsheetId}):`, error);
     if (error instanceof Error) {
         if (error.message.includes('permission') || error.message.includes('denied')) {
              throw new Error(`Error de permisos. Verifica que la hoja de cálculo sea compartida con '${clientEmail}' con rol de 'Lector'.`);
         }
         if (error.message.includes('Unable to parse range')) {
-             throw new Error(`El rango '${SPREADSHEET_DATA_RANGE}' no es válido o no existe en la hoja.`);
+             throw new Error(`El rango '${dataRange}' no es válido o no existe en la hoja.`);
         }
         if (error.message.includes('Requested entity was not found')) {
             throw new Error(`No se encontró la hoja de cálculo con ID: ${site.spreadsheetId}. Verifica el ID.`);

@@ -21,6 +21,7 @@ export interface Site {
   nps: number;
   averageTicket: number;
   spreadsheetId?: string;
+  spreadsheetGid?: string;
   npsLastUpdatedAt?: Timestamp;
 }
 
