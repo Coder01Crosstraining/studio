@@ -49,7 +49,9 @@ export async function getMonthlyNpsForSite(site: Site): Promise<number> {
       throw new Error(`El valor de NPS obtenido ("${rows[1][0]}") no es un número válido.`);
     }
 
-    return npsValue;
+    // Round to one decimal place before returning
+    return parseFloat(npsValue.toFixed(1));
+    
   } catch (error) {
     console.error('Error fetching NPS from Google Sheets:', error);
     if (error instanceof Error) {
