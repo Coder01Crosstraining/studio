@@ -2,12 +2,16 @@
 'use server';
 import { google } from 'googleapis';
 import type { Site } from '@/lib/types';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { isSameDay } from 'date-fns';
+
 
 // The range K2:P3 will be fetched, but we'll assume the relevant
 // NPS value is always in the first cell of the second row of the range (K3).
 const SPREADSHEET_DATA_RANGE = 'K2:P3';
 
-export async function getMonthlyNpsForSite(site: Site): Promise<number> {
+async function getMonthlyNpsForSite(site: Site): Promise<number> {
   const clientEmail = process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
   const privateKey = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
 
@@ -71,5 +75,45 @@ export async function getMonthlyNpsForSite(site: Site): Promise<number> {
     }
     // Generic fallback error
     throw new Error('No se pudo obtener el valor de NPS desde Google Sheets.');
+  }
+}
+
+export async function updateNpsForSiteIfStale(site: Site): Promise<void> {
+  if (!site.spreadsheetId) {
+    console.log(`Skipping NPS update for ${site.name}: No spreadsheet ID configured.`);
+    return;
+  }
+
+  const siteRef = doc(db, 'sites', site.id);
+  const siteDoc = await getDoc(siteRef); // Re-fetch to get the latest timestamp
+
+  if (!siteDoc.exists()) {
+    throw new Error('Site document not found.');
+  }
+
+  const currentData = siteDoc.data() as Site;
+  const lastUpdate = currentData.npsLastUpdatedAt?.toDate();
+  const now = new Date();
+
+  // If NPS was already updated today, do nothing.
+  if (lastUpdate && isSameDay(lastUpdate, now)) {
+    console.log(`NPS for ${site.name} is already up-to-date for today.`);
+    return;
+  }
+
+  console.log(`NPS for ${site.name} is stale or has never been updated. Fetching new value...`);
+  try {
+    const newNps = await getMonthlyNpsForSite(site);
+    
+    await updateDoc(siteRef, {
+      nps: newNps,
+      npsLastUpdatedAt: serverTimestamp(),
+    });
+    
+    console.log(`Successfully updated NPS for ${site.name} to ${newNps}.`);
+  } catch (error) {
+    console.error(`Failed to update NPS for site ${site.id}:`, error);
+    // We don't re-throw the error here to avoid breaking the UI if the update fails.
+    // The error is already logged to the server console.
   }
 }

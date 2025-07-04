@@ -10,6 +10,7 @@ import { Line, LineChart, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Site, SiteId, DailyReport, UserRole } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
+import { updateNpsForSiteIfStale } from '@/services/google-sheets';
 import { Info, Loader2, Pencil, RefreshCw } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { format, getDay, getDate, getDaysInMonth } from 'date-fns';
@@ -164,7 +165,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
             const dailyGoal = totalEffectiveDays > 0 ? kpiData.monthlyGoal / totalEffectiveDays : 0;
 
             const revenueChartData: DailyChartData[] = reports.map(r => ({
-                date: format(new Date(r.date), 'MMM d', { locale: es }),
+                date: format(new Date(r.date.replace(/-/g, '/')), 'MMM d', { locale: es }),
                 revenue: r.newRevenue,
                 goal: Math.floor(dailyGoal)
             }));
@@ -191,6 +192,13 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
         fetchAndCacheForecast();
 
     }, [kpiData, siteId, fetchAndCacheForecast]);
+
+    // Trigger daily NPS update check
+    useEffect(() => {
+        if (kpiData) {
+            updateNpsForSiteIfStale(kpiData);
+        }
+    }, [kpiData]);
 
 
     const handleKpiSubmit = async (values: z.infer<typeof kpiSchema>) => {
@@ -283,7 +291,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                 <CardContent><div className="text-2xl font-bold">{kpiData.retention.toFixed(1)}%</div></CardContent>
             </Card>
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS (Promedio)</CardTitle></CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS (Mes Actual)</CardTitle></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.nps.toFixed(1)}</div></CardContent>
             </Card>
             </div>

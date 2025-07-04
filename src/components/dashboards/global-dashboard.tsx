@@ -306,7 +306,7 @@ export function GlobalDashboard() {
   return (
     <TooltipProvider>
       <div className="space-y-4">
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Ventas a la Fecha (Global)</CardTitle></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{formatCurrency(globalSummary.revenue)}</div></CardContent>
@@ -330,6 +330,10 @@ export function GlobalDashboard() {
                         <div className="text-2xl font-bold">{formatCurrency(globalSummary.salesForecast)}</div>
                     )}
                 </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS Promedio (Global)</CardTitle></CardHeader>
+                <CardContent><div className="text-2xl font-bold">{globalSummary.nps.toFixed(1)}</div></CardContent>
             </Card>
         </div>
 

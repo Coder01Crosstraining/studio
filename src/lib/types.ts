@@ -21,6 +21,7 @@ export interface Site {
   nps: number;
   averageTicket: number;
   spreadsheetId?: string;
+  npsLastUpdatedAt?: Timestamp;
 }
 
 export interface DailyReport {
@@ -31,7 +32,6 @@ export interface DailyReport {
   date: string; // YYYY-MM-DD
   newRevenue: number;
   renewalRate: number;
-  avgNPS: number;
   dailyWin: string;
   dailyChallenge: string;
   lessonLearned: string;
