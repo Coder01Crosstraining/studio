@@ -9,6 +9,7 @@ export interface User {
   email: string;
   role: UserRole;
   siteId: SiteId | null;
+  photoURL?: string;
 }
 
 export interface Site {

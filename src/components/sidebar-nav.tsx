@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { SettingsDialog } from "@/components/settings-dialog";
 
 const navItems = [
   {
@@ -88,6 +89,7 @@ export function SidebarNav() {
   const { user, role, logout } = useAuth();
   const { isMobile, setOpenMobile, setIsDropdownOpen } = useSidebar();
   const router = useRouter();
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
 
   const handleLogout = () => {
     logout();
@@ -103,6 +105,7 @@ export function SidebarNav() {
   const filteredNavItems = navItems.filter(item => !item.roles || item.roles.includes(role || ''));
 
   return (
+    <>
     <Sidebar>
       <SidebarHeader>
         <Button 
@@ -149,7 +152,7 @@ export function SidebarNav() {
       <SidebarFooter>
          <div className={cn("flex w-full items-center gap-3 overflow-hidden p-2 text-left text-sm", "group-data-[state=collapsed]/sidebar:w-auto group-data-[state=collapsed]/sidebar:justify-center")}>
             <Avatar className="h-8 w-8 shrink-0">
-                <AvatarImage src={`https://i.pravatar.cc/150?u=${user?.email}`} />
+                <AvatarImage src={user?.photoURL || `https://i.pravatar.cc/150?u=${user?.email}`} />
                 <AvatarFallback>{user?.name?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="flex-1 overflow-hidden group-data-[state=collapsed]/sidebar:hidden">
@@ -172,7 +175,7 @@ export function SidebarNav() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setIsSettingsOpen(true); }}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Configuración</span>
                 </DropdownMenuItem>
@@ -186,5 +189,7 @@ export function SidebarNav() {
          </div>
       </SidebarFooter>
     </Sidebar>
+    <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+    </>
   );
 }

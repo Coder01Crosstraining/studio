@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { User, UserRole } from '@/lib/types';
@@ -13,6 +13,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUserContext: (data: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: customData.name,
             role: customData.role,
             siteId: customData.siteId,
+            photoURL: customData.photoURL,
           });
         } else {
           // Handle case where user exists in Auth but not in Firestore
@@ -61,6 +63,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async (): Promise<void> => {
     await signOut(auth);
   };
+  
+  const updateUserContext = (data: Partial<User>) => {
+    setUser(currentUser => (currentUser ? { ...currentUser, ...data } : null));
+  };
+
 
   const value = {
     user,
@@ -68,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     login,
     logout,
+    updateUserContext,
   };
 
   return <AuthContext.Provider value={value}>{loading ? <FullPageLoader /> : children}</AuthContext.Provider>;
