@@ -115,7 +115,7 @@ export function SidebarNav() {
                 "group-data-[state=collapsed]/sidebar:w-auto group-data-[state=collapsed]/sidebar:justify-center"
             )}
         >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-8 w-8 shrink-0 text-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-10 w-10 shrink-0 text-primary">
               <path fill="currentColor" d="M2,3.41L5.5,3.41L12,15.25L18.5,3.41L22,3.41L12,21.59L2,3.41Z M7.83,3.41L12,10.91L16.17,3.41L14,3.41L12,7.09L10,3.41L7.83,3.41Z" />
             </svg>
             <span className="ml-2 group-data-[state=collapsed]/sidebar:hidden">VIBRA OS</span>
