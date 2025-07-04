@@ -19,7 +19,7 @@ import { Loader2, PlusCircle, Eye } from 'lucide-react';
 import type { OneOnOneSession, EmployeeRole, SiteId, Site } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 const sessionSchema = z.object({
   employeeName: z.string().min(2, "El nombre es muy corto."),
@@ -77,7 +77,7 @@ export default function OneOnOnePage() {
             const querySnapshot = await getDocs(q);
             const fetchedSessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OneOnOneSession));
 
-            fetchedSessions.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+            fetchedSessions.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
             setSessions(fetchedSessions);
         } catch (error) {
             console.error("Error fetching sessions:", error);
@@ -101,8 +101,8 @@ export default function OneOnOnePage() {
       };
       const docRef = await addDoc(collection(db, 'one-on-one-sessions'), newSessionData);
       
-      const newSession = { ...newSessionData, id: docRef.id, createdAt: new Date() } as OneOnOneSession;
-      setSessions(prev => [newSession, ...prev].sort((a,b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+      const newSession = { ...newSessionData, id: docRef.id, createdAt: Timestamp.now() } as OneOnOneSession;
+      setSessions(prev => [newSession, ...prev].sort((a,b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)));
 
       toast({ title: 'Éxito', description: 'La nueva sesión 1-a-1 ha sido registrada.' });
       setIsLoading(false);
