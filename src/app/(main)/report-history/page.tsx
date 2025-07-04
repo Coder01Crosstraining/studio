@@ -126,7 +126,7 @@ export default function ReportHistoryPage() {
                   <CardHeader className="p-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-base">{format(new Date(report.date), 'PPP', { locale: es })}</CardTitle>
+                        <CardTitle className="text-base">{format(new Date(report.date.replace(/-/g, '/')), 'PPP', { locale: es })}</CardTitle>
                         <CardDescription>
                           {role === 'CEO' ? `${siteMap.get(report.siteId) || report.siteId} - ` : ''}
                           {report.leaderName}
@@ -140,7 +140,7 @@ export default function ReportHistoryPage() {
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[625px]">
                           <DialogHeader>
-                            <DialogTitle>Reporte de {siteMap.get(report.siteId)} - {format(new Date(report.date), 'PPP', { locale: es })}</DialogTitle>
+                            <DialogTitle>Reporte de {siteMap.get(report.siteId)} - {format(new Date(report.date.replace(/-/g, '/')), 'PPP', { locale: es })}</DialogTitle>
                             <DialogDescription>Enviado por {report.leaderName}</DialogDescription>
                           </DialogHeader>
                           {selectedReport && (
@@ -190,7 +190,7 @@ export default function ReportHistoryPage() {
                   )}
                   {filteredReports.map((report) => (
                     <TableRow key={report.id}>
-                      <TableCell>{format(new Date(report.date), 'PPP', { locale: es })}</TableCell>
+                      <TableCell>{format(new Date(report.date.replace(/-/g, '/')), 'PPP', { locale: es })}</TableCell>
                       {role === 'CEO' && <TableCell>{siteMap.get(report.siteId) || report.siteId}</TableCell>}
                       <TableCell className="font-medium">{report.leaderName}</TableCell>
                       <TableCell className="text-right">{formatCurrency(report.newRevenue)}</TableCell>
@@ -203,7 +203,7 @@ export default function ReportHistoryPage() {
                           </DialogTrigger>
                           <DialogContent className="sm:max-w-[625px]">
                             <DialogHeader>
-                              <DialogTitle>Reporte de {siteMap.get(report.siteId)} - {format(new Date(report.date), 'PPP', { locale: es })}</DialogTitle>
+                              <DialogTitle>Reporte de {siteMap.get(report.siteId)} - {format(new Date(report.date.replace(/-/g, '/')), 'PPP', { locale: es })}</DialogTitle>
                               <DialogDescription>Enviado por {report.leaderName}</DialogDescription>
                             </DialogHeader>
                             {selectedReport && (

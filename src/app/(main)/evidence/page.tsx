@@ -240,7 +240,7 @@ export default function EvidencePage() {
                               <SelectItem value="none">No asociar a ninguna sesión</SelectItem>
                               {oneOnOneSessions.map(session => (
                                 <SelectItem key={session.id} value={session.id}>
-                                  {session.employeeName} - {format(new Date(session.sessionDate), 'PPP', { locale: es })}
+                                  {session.employeeName} - {format(new Date(session.sessionDate.replace(/-/g, '/')), 'PPP', { locale: es })}
                                 </SelectItem>
                               ))}
                             </SelectContent>
