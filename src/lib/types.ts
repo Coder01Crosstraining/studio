@@ -53,7 +53,7 @@ export interface OneOnOneSession {
   createdAt: Timestamp;
 }
 
-export type EvidenceCategory = "reunion" | "preventiva" | "correctiva";
+export type EvidenceCategory = "reunion" | "preventiva" | "correctiva" | "complementario";
 
 export interface EvidenceDocument {
   id: string;

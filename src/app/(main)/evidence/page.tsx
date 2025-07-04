@@ -28,7 +28,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 const evidenceSchema = z.object({
   title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
   description: z.string().min(10, "La descripción debe tener al menos 10 caracteres."),
-  category: z.enum(["reunion", "preventiva", "correctiva"], { required_error: "La categoría es obligatoria." }),
+  category: z.enum(["reunion", "preventiva", "correctiva", "complementario"], { required_error: "La categoría es obligatoria." }),
   file: z.any()
     .refine((files) => files?.length == 1, "Se requiere un archivo.")
     .refine((files) => files?.[0]?.size <= 5000000, `El tamaño máximo del archivo es 5MB.`)
@@ -43,12 +43,14 @@ const categoryText: Record<EvidenceCategory, string> = {
   reunion: "Acta de Reunión",
   preventiva: "Acción Preventiva",
   correctiva: "Acción Correctiva",
+  complementario: "Documento Complementario",
 };
 
 const categoryColors: Record<EvidenceCategory, string> = {
   reunion: "bg-blue-400/20 text-blue-600 border-blue-400/30",
   preventiva: "bg-yellow-400/20 text-yellow-600 border-yellow-400/30",
   correctiva: "bg-orange-400/20 text-orange-600 border-orange-400/30",
+  complementario: "bg-purple-400/20 text-purple-600 border-purple-400/30",
 };
 
 export default function EvidencePage() {
@@ -212,6 +214,7 @@ export default function EvidencePage() {
                               <SelectItem value="reunion">Acta de Reunión</SelectItem>
                               <SelectItem value="preventiva">Acción Preventiva</SelectItem>
                               <SelectItem value="correctiva">Acción Correctiva</SelectItem>
+                              <SelectItem value="complementario">Documento Complementario</SelectItem>
                             </SelectContent>
                           </Select>
                         <FormMessage /></FormItem>
