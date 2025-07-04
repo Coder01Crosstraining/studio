@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, getDoc } from 'firebase/firestore';
 
 const reportSchema = z.object({
   date: z.date({ required_error: "Se requiere una fecha para el reporte." }),
@@ -35,6 +35,8 @@ export default function DailyReportPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = React.useState(false);
+  const [npsValue, setNpsValue] = useState<number | null>(null);
+  const [isNpsLoading, setIsNpsLoading] = useState(true);
 
   const form = useForm<z.infer<typeof reportSchema>>({
     resolver: zodResolver(reportSchema),
@@ -47,6 +49,37 @@ export default function DailyReportPage() {
       lessonLearned: '',
     },
   });
+
+  useEffect(() => {
+    async function fetchNps() {
+      if (user && user.siteId) {
+        setIsNpsLoading(true);
+        try {
+          const siteRef = doc(db, 'sites', user.siteId);
+          const siteDoc = await getDoc(siteRef);
+          if (siteDoc.exists()) {
+            const siteData = siteDoc.data();
+            setNpsValue(siteData.nps);
+          } else {
+            setNpsValue(0); // Default to 0 if not found
+          }
+        } catch (error) {
+          console.error("Error fetching NPS value:", error);
+          setNpsValue(0);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No se pudo cargar el valor de NPS.",
+          });
+        } finally {
+          setIsNpsLoading(false);
+        }
+      } else {
+          setIsNpsLoading(false);
+      }
+    }
+    fetchNps();
+  }, [user, toast]);
   
   async function onSubmit(values: z.infer<typeof reportSchema>) {
     if (!user || !user.siteId) {
@@ -138,13 +171,23 @@ export default function DailyReportPage() {
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <FormField control={form.control} name="newRevenue" render={({ field }) => (
                   <FormItem><FormLabel>Ventas del Día (COP)</FormLabel><FormControl><Input type="number" placeholder="1500000" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="renewalRate" render={({ field }) => (
                   <FormItem><FormLabel>Tasa de Renovación (%)</FormLabel><FormControl><Input type="number" placeholder="85" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
+                 <FormItem>
+                  <FormLabel>NPS Promedio (Mes)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      value={isNpsLoading ? "Cargando..." : (npsValue !== null ? npsValue.toFixed(1) : "N/A")}
+                      disabled
+                    />
+                  </FormControl>
+                </FormItem>
               </div>
 
               <FormField control={form.control} name="dailyWin" render={({ field }) => (
