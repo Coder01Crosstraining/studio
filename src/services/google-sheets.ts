@@ -43,9 +43,9 @@ export async function getMonthlyNpsForSite(site: Site): Promise<number> {
     const [headerRow, valueRow] = rows;
     const currentMonthName = format(new Date(), 'MMMM', { locale: es });
     
-    // Find the column index for the current month (case-insensitive)
+    // Find the column index for the current month by checking if the header includes the month name
     const monthIndex = headerRow.findIndex(
-      (month: string) => month.trim().toLowerCase() === currentMonthName.toLowerCase()
+      (header: string) => header.trim().toLowerCase().includes(currentMonthName.toLowerCase())
     );
 
     if (monthIndex === -1) {
