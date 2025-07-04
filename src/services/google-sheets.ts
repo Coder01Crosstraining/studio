@@ -8,6 +8,13 @@ import type { Site } from '@/lib/types';
 const SPREADSHEET_DATA_RANGE = 'K2:P3';
 
 export async function getMonthlyNpsForSite(site: Site): Promise<number> {
+  const clientEmail = process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
+  const privateKey = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
+
+  if (!clientEmail || !privateKey) {
+    throw new Error('Las credenciales de Google Sheets no están configuradas en el servidor. Contacta a soporte.');
+  }
+
   if (!site.spreadsheetId) {
     throw new Error(`La sede ${site.name} no tiene un ID de hoja de cálculo configurado.`);
   }
@@ -15,8 +22,8 @@ export async function getMonthlyNpsForSite(site: Site): Promise<number> {
   try {
     const auth = new google.auth.GoogleAuth({
       credentials: {
-        client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
-        private_key: process.env.GOOGLE_SHEETS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        client_email: clientEmail,
+        private_key: privateKey.replace(/\\n/g, '\n'),
       },
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
@@ -55,8 +62,16 @@ export async function getMonthlyNpsForSite(site: Site): Promise<number> {
     return npsValue;
   } catch (error) {
     console.error('Error fetching NPS from Google Sheets:', error);
-    if (error instanceof Error && error.message.includes('permission')) {
-         throw new Error('Error de permisos. Verifica que la cuenta de servicio tenga acceso a la hoja de cálculo.');
+    if (error instanceof Error) {
+        if (error.message.includes('permission') || error.message.includes('denied')) {
+             throw new Error(`Error de permisos. Verifica que la hoja de cálculo sea compartida con '${clientEmail}' con rol de 'Lector'.`);
+        }
+        if (error.message.includes('Unable to parse range')) {
+             throw new Error(`El rango '${SPREADSHEET_DATA_RANGE}' no es válido o no existe en la hoja.`);
+        }
+        if (error.message.includes('Requested entity was not found')) {
+            throw new Error(`No se encontró la hoja de cálculo con ID: ${site.spreadsheetId}. Verifica el ID.`);
+        }
     }
     throw new Error('No se pudo obtener el valor de NPS desde Google Sheets.');
   }
