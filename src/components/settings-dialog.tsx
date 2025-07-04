@@ -74,17 +74,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       }
 
       const userRef = doc(db, 'users', user.uid);
-      const updatedData = {
+      
+      // Firestore does not accept 'undefined'. We use 'null' instead.
+      const dataToUpdate = {
         name: values.name,
-        photoURL: newPhotoURL,
+        photoURL: newPhotoURL || null,
       };
       
-      await updateDoc(userRef, {
-          name: updatedData.name,
-          photoURL: updatedData.photoURL,
-      });
+      await updateDoc(userRef, dataToUpdate);
 
-      updateUserContext(updatedData);
+      updateUserContext(dataToUpdate);
 
       toast({ title: 'Éxito', description: 'Tu perfil ha sido actualizado.' });
       onOpenChange(false);
@@ -116,7 +115,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         <div className="py-4 space-y-6">
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <AvatarImage src={avatarPreview || user?.photoURL} />
+              <AvatarImage src={avatarPreview || user?.photoURL || ''} />
               <AvatarFallback>{user?.name?.charAt(0).toUpperCase()}</AvatarFallback>
             </Avatar>
             <input
