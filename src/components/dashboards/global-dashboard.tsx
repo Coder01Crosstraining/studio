@@ -333,7 +333,7 @@ export function GlobalDashboard() {
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS Promedio (Global)</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{globalSummary.nps.toFixed(1)}</div></CardContent>
+                <CardContent><div className="text-2xl font-bold">{globalSummary.nps.toFixed(2)}</div></CardContent>
             </Card>
         </div>
 
@@ -381,7 +381,7 @@ export function GlobalDashboard() {
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-muted-foreground">NPS</p>
-                                    <p className="font-semibold">{data.nps.toFixed(1)}</p>
+                                    <p className="font-semibold">{data.nps.toFixed(2)}</p>
                                 </div>
                                 <div className="space-y-1">
                                     <p className="text-muted-foreground">Ticket Promedio</p>
@@ -435,7 +435,7 @@ export function GlobalDashboard() {
                         </TableCell>
                         <TableCell className="text-right hidden lg:table-cell">{formatCurrency(data.averageTicket)}</TableCell>
                         <TableCell className="text-right hidden lg:table-cell">{data.retention.toFixed(1)}%</TableCell>
-                        <TableCell className="text-right hidden lg:table-cell">{data.nps.toFixed(1)}</TableCell>
+                        <TableCell className="text-right hidden lg:table-cell">{data.nps.toFixed(2)}</TableCell>
                         <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleOpenEditModal(siteId as SiteId)}><Pencil className="h-4 w-4" /></Button></TableCell>
                         </TableRow>
                     );

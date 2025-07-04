@@ -183,7 +183,7 @@ export default function DailyReportPage() {
                   <FormControl>
                     <Input
                       type="text"
-                      value={isNpsLoading ? "Cargando..." : (npsValue !== null ? npsValue.toFixed(1) : "N/A")}
+                      value={isNpsLoading ? "Cargando..." : (npsValue !== null ? npsValue.toFixed(2) : "N/A")}
                       disabled
                     />
                   </FormControl>

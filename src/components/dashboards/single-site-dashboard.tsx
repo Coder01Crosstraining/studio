@@ -292,7 +292,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS (Mes Actual)</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{kpiData.nps.toFixed(1)}</div></CardContent>
+                <CardContent><div className="text-2xl font-bold">{kpiData.nps.toFixed(2)}</div></CardContent>
             </Card>
             </div>
             <div className="grid grid-cols-1 gap-4">
