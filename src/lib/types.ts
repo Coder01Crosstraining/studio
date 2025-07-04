@@ -66,6 +66,7 @@ export interface EvidenceDocument {
   fileType: "image" | "pdf";
   category: EvidenceCategory;
   uploadedAt: Timestamp;
+  oneOnOneSessionId?: string;
 }
 
 export interface MonthlyHistory {

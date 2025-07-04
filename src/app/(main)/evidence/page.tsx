@@ -18,11 +18,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, PlusCircle, Eye, FileText } from 'lucide-react';
-import type { EvidenceDocument, SiteId, EvidenceCategory, Site } from '@/lib/types';
+import type { EvidenceDocument, SiteId, EvidenceCategory, Site, OneOnOneSession } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db, storage } from '@/lib/firebase';
-import { collection, query, getDocs, addDoc, serverTimestamp, orderBy, QuerySnapshot, DocumentData } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, serverTimestamp, orderBy, QuerySnapshot, DocumentData, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const evidenceSchema = z.object({
@@ -36,6 +36,7 @@ const evidenceSchema = z.object({
       (files) => ["image/jpeg", "image/png", "application/pdf"].includes(files?.[0]?.type),
       "Solo se admiten formatos .jpg, .png y .pdf."
     ),
+  oneOnOneSessionId: z.string().optional(),
 });
 
 const categoryText: Record<EvidenceCategory, string> = {
@@ -54,6 +55,7 @@ export default function EvidencePage() {
   const { role, user } = useAuth();
   const [documents, setDocuments] = useState<EvidenceDocument[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
+  const [oneOnOneSessions, setOneOnOneSessions] = useState<OneOnOneSession[]>([]);
   const [isFetching, setIsFetching] = useState(true);
   const [selectedSite, setSelectedSite] = useState<SiteId | 'global'>(role === 'CEO' ? 'global' : user!.siteId!);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -84,6 +86,20 @@ export default function EvidencePage() {
                  if (user.siteId) {
                     const evidenceRef = collection(db, 'sites', user.siteId, 'evidence');
                     evidencePromises.push(getDocs(query(evidenceRef, orderBy('uploadedAt', 'desc'))));
+
+                    // Fetch 1-on-1 sessions for the dropdown
+                    const sessionsRef = collection(db, 'one-on-one-sessions');
+                    const sessionsQuery = query(sessionsRef, where('siteId', '==', user.siteId));
+                    const sessionsSnapshot = await getDocs(sessionsQuery);
+                    const fetchedSessions = sessionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OneOnOneSession));
+                    
+                    fetchedSessions.sort((a, b) => {
+                      if (a.createdAt && b.createdAt) {
+                        return b.createdAt.toMillis() - a.createdAt.toMillis();
+                      }
+                      return 0;
+                    });
+                    setOneOnOneSessions(fetchedSessions);
                  }
             }
 
@@ -136,6 +152,7 @@ export default function EvidencePage() {
             fileType: file.type.startsWith('image') ? 'image' : 'pdf',
             fileUrl,
             uploadedAt: serverTimestamp(),
+            ...(values.oneOnOneSessionId && values.oneOnOneSessionId !== 'none' && { oneOnOneSessionId: values.oneOnOneSessionId }),
         };
 
         const evidenceCollectionRef = collection(db, 'sites', user.siteId, 'evidence');
@@ -203,6 +220,33 @@ export default function EvidencePage() {
                         <FormItem><FormLabel>Archivo (JPG, PNG, PDF)</FormLabel><FormControl><Input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => onChange(e.target.files)} {...fieldProps} /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
+
+                    <FormField
+                      control={form.control}
+                      name="oneOnOneSessionId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Asociar a Sesión 1-a-1 (Opcional)</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona una sesión para asociar" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">No asociar a ninguna sesión</SelectItem>
+                              {oneOnOneSessions.map(session => (
+                                <SelectItem key={session.id} value={session.id}>
+                                  {session.employeeName} - {format(new Date(session.sessionDate), 'PPP', { locale: es })}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     <DialogFooter><Button type="submit" disabled={isLoading}>{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Subir Archivo</Button></DialogFooter>
                   </form></Form>
                 </DialogContent>
