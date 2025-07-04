@@ -1,7 +1,7 @@
 
 'use server';
 import { google } from 'googleapis';
-import type { Site } from '@/lib/types';
+import type { Site, SiteId } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { isSameDay } from 'date-fns';
@@ -78,21 +78,22 @@ async function getMonthlyNpsForSite(site: Site): Promise<number> {
   }
 }
 
-export async function updateNpsForSiteIfStale(site: Site): Promise<void> {
-  if (!site.spreadsheetId) {
-    console.log(`Skipping NPS update for ${site.name}: No spreadsheet ID configured.`);
-    return;
-  }
-
-  const siteRef = doc(db, 'sites', site.id);
-  const siteDoc = await getDoc(siteRef); // Re-fetch to get the latest timestamp
+export async function updateNpsForSiteIfStale(siteId: SiteId): Promise<void> {
+  const siteRef = doc(db, 'sites', siteId);
+  const siteDoc = await getDoc(siteRef);
 
   if (!siteDoc.exists()) {
     throw new Error('Site document not found.');
   }
 
-  const currentData = siteDoc.data() as Site;
-  const lastUpdate = currentData.npsLastUpdatedAt?.toDate();
+  const site = { id: siteDoc.id, ...siteDoc.data() } as Site;
+
+  if (!site.spreadsheetId) {
+    console.log(`Skipping NPS update for ${site.name}: No spreadsheet ID configured.`);
+    return;
+  }
+
+  const lastUpdate = site.npsLastUpdatedAt?.toDate();
   const now = new Date();
 
   // If NPS was already updated today, do nothing.

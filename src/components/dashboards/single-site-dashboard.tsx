@@ -195,10 +195,10 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
 
     // Trigger daily NPS update check
     useEffect(() => {
-        if (kpiData) {
-            updateNpsForSiteIfStale(kpiData);
+        if (siteId) {
+            updateNpsForSiteIfStale(siteId);
         }
-    }, [kpiData]);
+    }, [siteId]);
 
 
     const handleKpiSubmit = async (values: z.infer<typeof kpiSchema>) => {
