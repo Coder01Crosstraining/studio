@@ -48,6 +48,12 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
 
   const form = useForm<z.infer<typeof siteSchema>>({ resolver: zodResolver(siteSchema) });
 
+  const SPREADSHEET_ID_MAP: Record<string, string> = {
+    'piedecuesta': '1RR9WAJZncmnXYw7iCBlS4elELsaO9ZsotlvwWV3kybY',
+    'floridablanca': '1YKaEB2qiiurKdn8m3vpZusnLbgLVaQkXUl52HN7cExk',
+    'ciudadela': '1NuEWKj5QPDvUVW6fNrv6gfDcIn1YPwDzV_o0s-FMztA',
+  };
+
   const siteLeadersMap = useMemo(() => {
     const map = new Map<SiteId, string>();
     const siteLeaders = users.filter(u => u.role === 'SiteLeader' && u.siteId);
@@ -69,16 +75,21 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
   const handleSiteSubmit = async (values: z.infer<typeof siteSchema>) => {
     setIsSubmitting(true);
     try {
+      const siteNameKey = Object.keys(SPREADSHEET_ID_MAP).find(key => 
+        values.name.toLowerCase().includes(key)
+      );
+      const spreadsheetId = siteNameKey ? SPREADSHEET_ID_MAP[siteNameKey] : values.spreadsheetId || '';
+      
       if (editingSite) {
         // Update
         const siteRef = doc(db, "sites", editingSite.id);
-        await updateDoc(siteRef, { name: values.name, spreadsheetId: values.spreadsheetId || '' });
+        await updateDoc(siteRef, { name: values.name, spreadsheetId: spreadsheetId });
         toast({ title: "Sede Actualizada", description: "Los datos de la sede han sido actualizados." });
       } else {
         // Create
         await addDoc(collection(db, "sites"), {
           name: values.name,
-          spreadsheetId: values.spreadsheetId || '',
+          spreadsheetId: spreadsheetId,
           revenue: 0,
           monthlyGoal: 0,
           retention: 0,
