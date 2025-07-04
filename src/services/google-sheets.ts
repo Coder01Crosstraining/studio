@@ -4,11 +4,12 @@ import { google } from 'googleapis';
 import type { Site, SiteId } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { isSameDay } from 'date-fns';
+import { isSameDay, format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 
-// The range K2:P3 will be fetched, but we'll assume the relevant
-// NPS value is always in the first cell of the second row of the range (K3).
+// The range K2:P3 will be fetched. The logic will dynamically find the column
+// for the current month within this range.
 const SPREADSHEET_DATA_RANGE = 'K2:P3';
 
 async function getMonthlyNpsForSite(site: Site): Promise<number> {
@@ -64,17 +65,28 @@ async function getMonthlyNpsForSite(site: Site): Promise<number> {
     });
 
     const rows = response.data.values;
-    // Check if we got at least two rows and the second row has at least one cell.
-    if (!rows || rows.length < 2 || !rows[1] || rows[1].length < 1) {
+    if (!rows || rows.length < 2 || !rows[0] || !rows[1]) {
       throw new Error('No se encontraron suficientes datos en el rango esperado de la hoja de cálculo.');
     }
 
-    // The first cell of the second row (K3) is assumed to hold the current month's NPS.
-    const npsValueString = rows[1][0]?.replace(',', '.').trim() || '0';
+    const headers = rows[0].map(h => typeof h === 'string' ? h.toLowerCase() : '');
+    const values = rows[1];
+
+    const now = new Date();
+    // format 'MMMM' gives full month name, e.g., "julio", "agosto"
+    const currentMonthName = format(now, 'MMMM', { locale: es }); 
+
+    const columnIndex = headers.findIndex(header => header.includes(currentMonthName));
+
+    if (columnIndex === -1) {
+      throw new Error(`No se pudo encontrar la columna de NPS para el mes actual (${currentMonthName}) en la hoja de cálculo. Verifique que el encabezado de la columna (ej. "nps promedio ${currentMonthName}") sea correcto.`);
+    }
+    
+    const npsValueString = values[columnIndex]?.replace(',', '.').trim() || '0';
     const npsValue = parseFloat(npsValueString);
     
     if (isNaN(npsValue)) {
-      throw new Error(`El valor de NPS obtenido ("${rows[1][0]}") no es un número válido.`);
+      throw new Error(`El valor de NPS obtenido ("${values[columnIndex]}") para '${currentMonthName}' no es un número válido.`);
     }
 
     // Round to one decimal place before returning
@@ -93,7 +105,7 @@ async function getMonthlyNpsForSite(site: Site): Promise<number> {
             throw new Error(`No se encontró la hoja de cálculo con ID: ${site.spreadsheetId}. Verifica el ID.`);
         }
         // Propagate my custom errors
-        if (error.message.startsWith('No se encontraron suficientes datos') || error.message.startsWith('El valor de NPS obtenido')) {
+        if (error.message.startsWith('No se encontraron suficientes datos') || error.message.startsWith('El valor de NPS obtenido') || error.message.startsWith('No se pudo encontrar la columna')) {
             throw error;
         }
     }
