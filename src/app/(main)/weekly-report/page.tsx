@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -19,7 +19,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, getDoc } from 'firebase/firestore';
+import { getMonthlyNpsForSite } from '@/services/google-sheets';
+import type { Site } from '@/lib/types';
 
 const reportSchema = z.object({
   date: z.date({ required_error: "Se requiere una fecha para el reporte." }),
@@ -36,16 +38,47 @@ export default function DailyReportPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = React.useState(false);
+  const [isNpsLoading, setIsNpsLoading] = React.useState(true);
 
   const form = useForm<z.infer<typeof reportSchema>>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
       date: new Date(),
+      newRevenue: 0,
+      renewalRate: 0,
+      avgNPS: 0,
       dailyWin: '',
       dailyChallenge: '',
       lessonLearned: '',
     },
   });
+
+  useEffect(() => {
+    async function fetchSiteAndNpsData() {
+        if (!user || !user.siteId) return;
+
+        setIsNpsLoading(true);
+        try {
+            const siteRef = doc(db, 'sites', user.siteId);
+            const siteDoc = await getDoc(siteRef);
+
+            if (siteDoc.exists()) {
+                const site = { id: siteDoc.id, ...siteDoc.data() } as Site;
+                const nps = await getMonthlyNpsForSite(site);
+                form.setValue('avgNPS', nps);
+            } else {
+                throw new Error("No se encontraron los datos de la sede.");
+            }
+        } catch (error) {
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Error al cargar NPS', description: (error as Error).message });
+            form.setValue('avgNPS', 0); // Set a default/error value
+        } finally {
+            setIsNpsLoading(false);
+        }
+    }
+    fetchSiteAndNpsData();
+  }, [user, form, toast]);
   
   async function onSubmit(values: z.infer<typeof reportSchema>) {
     if (!user || !user.siteId) {
@@ -145,7 +178,21 @@ export default function DailyReportPage() {
                   <FormItem><FormLabel>Tasa de Renovación (%)</FormLabel><FormControl><Input type="number" placeholder="85" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="avgNPS" render={({ field }) => (
-                  <FormItem><FormLabel>NPS Promedio (0-10)</FormLabel><FormControl><Input type="number" step="0.1" placeholder="8.5" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem>
+                    <FormLabel>NPS Promedio (Mensual)</FormLabel>
+                    <FormControl>
+                        <div className="relative">
+                            <Input 
+                                type="number" 
+                                readOnly 
+                                {...field}
+                                className="bg-muted pr-10"
+                            />
+                            {isNpsLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin" />}
+                        </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )} />
               </div>
 
@@ -159,7 +206,7 @@ export default function DailyReportPage() {
                 <FormItem><FormLabel>Lección Aprendida del Día</FormLabel><FormControl><Textarea placeholder="La campaña de 'trae un amigo' está funcionando muy bien en la tarde." {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || isNpsLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Enviar Reporte
               </Button>

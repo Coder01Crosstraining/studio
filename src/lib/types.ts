@@ -20,6 +20,7 @@ export interface Site {
   retention: number;
   nps: number;
   averageTicket: number;
+  spreadsheetId?: string;
 }
 
 export interface DailyReport {

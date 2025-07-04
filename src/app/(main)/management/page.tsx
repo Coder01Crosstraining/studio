@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 
 const siteSchema = z.object({
   name: z.string().min(3, "El nombre de la sede debe tener al menos 3 caracteres."),
+  spreadsheetId: z.string().optional(),
 });
 
 const userSchema = z.object({
@@ -61,7 +62,7 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
 
   const handleOpenDialog = (site: Site | null = null) => {
     setEditingSite(site);
-    form.reset(site ? { name: site.name } : { name: '' });
+    form.reset(site ? { name: site.name, spreadsheetId: site.spreadsheetId } : { name: '', spreadsheetId: '' });
     setIsDialogOpen(true);
   };
 
@@ -71,12 +72,13 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
       if (editingSite) {
         // Update
         const siteRef = doc(db, "sites", editingSite.id);
-        await updateDoc(siteRef, { name: values.name });
-        toast({ title: "Sede Actualizada", description: "El nombre de la sede ha sido actualizado." });
+        await updateDoc(siteRef, { name: values.name, spreadsheetId: values.spreadsheetId || '' });
+        toast({ title: "Sede Actualizada", description: "Los datos de la sede han sido actualizados." });
       } else {
         // Create
         await addDoc(collection(db, "sites"), {
           name: values.name,
+          spreadsheetId: values.spreadsheetId || '',
           revenue: 0,
           monthlyGoal: 0,
           retention: 0,
@@ -133,6 +135,13 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
                     <FormMessage />
                   </FormItem>
                 )} />
+                <FormField control={form.control} name="spreadsheetId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ID de Hoja de Cálculo (Opcional)</FormLabel>
+                    <FormControl><Input placeholder="ID de la hoja de Google Sheets para NPS" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
                 <DialogFooter>
                   <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
                   <Button type="submit" disabled={isSubmitting}>
@@ -181,6 +190,7 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
                   <TableRow>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Líder de Sede</TableHead>
+                    <TableHead>ID Hoja de Cálculo</TableHead>
                     <TableHead className="text-right w-[120px]">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -189,6 +199,7 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
                     <TableRow key={site.id}>
                       <TableCell className="font-medium">{site.name}</TableCell>
                       <TableCell>{siteLeadersMap.get(site.id) || 'Sin líder asignado'}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs">{site.spreadsheetId || 'No asignado'}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(site)}><Edit className="h-4 w-4" /></Button>
                         <AlertDialog>
