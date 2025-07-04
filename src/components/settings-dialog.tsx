@@ -65,21 +65,16 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setIsSubmitting(true);
 
     try {
-      let newPhotoURL = user.photoURL;
+      const userRef = doc(db, 'users', user.uid);
+      const dataToUpdate: { name: string; photoURL?: string } = {
+        name: values.name,
+      };
 
       if (avatarFile) {
         const storageRef = ref(storage, `avatars/${user.uid}/${Date.now()}_${avatarFile.name}`);
         const snapshot = await uploadBytes(storageRef, avatarFile);
-        newPhotoURL = await getDownloadURL(snapshot.ref);
+        dataToUpdate.photoURL = await getDownloadURL(snapshot.ref);
       }
-
-      const userRef = doc(db, 'users', user.uid);
-      
-      // Firestore does not accept 'undefined'. We use 'null' instead.
-      const dataToUpdate = {
-        name: values.name,
-        photoURL: newPhotoURL || null,
-      };
       
       await updateDoc(userRef, dataToUpdate);
 
