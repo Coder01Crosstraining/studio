@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { handleRegistration, verifyDocument } from "./actions";
 import { registerSchema, type RegisterFormValues } from "./schema";
+import { cn } from "@/lib/utils";
 
 
 export default function RegisterPage() {
@@ -44,6 +45,14 @@ export default function RegisterPage() {
     
     const handleVerify = async () => {
         setIsVerifying(true);
+        // Trigger validation only for the documentId field on the client
+        const isDocumentIdValid = await form.trigger("documentId");
+
+        if (!isDocumentIdValid) {
+            setIsVerifying(false);
+            return;
+        }
+
         const documentId = form.getValues("documentId");
         const result = await verifyDocument(documentId);
 
@@ -54,6 +63,7 @@ export default function RegisterPage() {
             });
             setStep('register');
         } else {
+            form.setError("documentId", { type: "server", message: result.error });
             toast({
                 variant: "destructive",
                 title: "Error de Verificación",
@@ -108,13 +118,23 @@ export default function RegisterPage() {
                 <CardContent>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                            <FormField control={form.control} name="documentId" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Número de Cédula</FormLabel>
-                                    <FormControl><Input placeholder="Tu número de documento" {...field} disabled={isLoading || step === 'register'} /></FormControl>
-                                    <FormMessage />
+                            <FormField
+                              control={form.control}
+                              name="documentId"
+                              render={({ field }) => (
+                                <FormItem className={cn(step === 'register' && 'hidden')}>
+                                  <FormLabel>Número de Cédula</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="Tu número de documento"
+                                      {...field}
+                                      disabled={isLoading}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
                                 </FormItem>
-                            )} />
+                              )}
+                            />
 
                             {step === 'register' && (
                                 <>
