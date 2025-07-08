@@ -12,7 +12,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { handleRegistration, registerSchema, type RegisterFormValues } from "./actions";
+import { handleRegistration } from "./actions";
+import { registerSchema, type RegisterFormValues } from "./schema";
 
 
 export default function RegisterPage() {
