@@ -10,6 +10,7 @@ export interface User {
   role: UserRole;
   siteId: SiteId | null;
   photoURL?: string;
+  documentId?: string;
 }
 
 export interface Site {

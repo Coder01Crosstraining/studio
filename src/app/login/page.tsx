@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -144,7 +145,13 @@ export default function LoginPage() {
               </Button>
             </form>
           </Form>
-          <div className="mt-6 flex items-center justify-between border-t pt-4">
+           <p className="mt-6 text-center text-sm">
+              ¿No tienes una cuenta?{" "}
+              <Link href="/register" className="font-semibold text-primary hover:text-primary/90">
+                Regístrate aquí
+              </Link>
+            </p>
+          <div className="mt-4 flex items-center justify-between border-t pt-4">
             <Label htmlFor="dark-mode-toggle" className="text-sm font-medium">
               Modo Oscuro
             </Label>

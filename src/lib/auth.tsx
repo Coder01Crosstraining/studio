@@ -38,10 +38,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             role: customData.role,
             siteId: customData.siteId,
             photoURL: customData.photoURL,
+            documentId: customData.documentId,
           });
         } else {
           // Handle case where user exists in Auth but not in Firestore
-          console.error("User data not found in Firestore.");
+          // This can happen during registration before the doc is created,
+          // or if the user is deleted from Firestore but not Auth.
+          // We sign out to be safe.
+          console.error("User data not found in Firestore. Signing out.");
           await signOut(auth);
           setUser(null);
         }
