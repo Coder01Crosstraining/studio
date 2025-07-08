@@ -82,7 +82,7 @@ export default function RegisterPage() {
                 title: "¡Registro Exitoso!",
                 description: "Ahora serás redirigido al panel principal.",
             });
-            // The onAuthStateChanged listener in useAuth will handle the redirect automatically after sign-in
+            router.push('/');
         } else {
             toast({
                 variant: "destructive",
