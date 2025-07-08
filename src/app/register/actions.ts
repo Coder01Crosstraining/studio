@@ -6,9 +6,34 @@ import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { FirebaseError } from "firebase/app";
 import type { RegisterFormValues } from "./schema";
 
+export async function verifyDocument(documentId: string): Promise<{ success: boolean, error?: string }> {
+    if (!documentId || documentId.length < 5) {
+        return { success: false, error: 'El número de cédula es muy corto.' };
+    }
+    
+    try {
+        const docRef = doc(db, 'documentId', documentId);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+            return { success: false, error: 'Cédula no autorizada para el registro.' };
+        }
+
+        const docData = docSnap.data();
+        if (docData.registeredBy) {
+            return { success: false, error: 'Esta cédula ya ha sido registrada por otro usuario.' };
+        }
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error verifying document:", error);
+        return { success: false, error: 'Ocurrió un error al verificar la cédula.' };
+    }
+}
+
 export async function handleRegistration(values: RegisterFormValues) {
     try {
-        // 1. Validate document ID
+        // 1. Re-validate document ID on the server as a security measure
         const docRef = doc(db, 'documentId', values.documentId);
         const docSnap = await getDoc(docRef);
 
