@@ -45,7 +45,6 @@ export type EmployeeRole = "Coach" | "SalesAdvisor";
 
 export interface OneOnOneSession {
   id: string;
-  siteId: SiteId;
   leaderId: string;
   employeeName: string;
   employeeRole: EmployeeRole;

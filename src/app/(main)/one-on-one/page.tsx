@@ -103,7 +103,6 @@ export default function OneOnOnePage() {
     try {
       const newSessionData = {
         ...values,
-        siteId: user.siteId,
         leaderId: user.uid,
         createdAt: serverTimestamp()
       };
