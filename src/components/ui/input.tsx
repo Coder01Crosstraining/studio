@@ -13,8 +13,6 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         )}
         ref={ref}
         {...props}
-        // Don't set value for file inputs. For others, provide a default empty string.
-        value={type === 'file' ? undefined : props.value ?? ''}
       />
     )
   }
