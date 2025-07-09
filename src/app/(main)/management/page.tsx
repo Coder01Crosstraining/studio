@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { authorizeDocumentAction } from './actions';
+import { FullPageLoader } from '@/components/loader';
 
 const siteSchema = z.object({
   name: z.string().min(3, "El nombre de la sede debe tener al menos 3 caracteres."),
@@ -523,7 +524,6 @@ function UserManagement({ sites, users, loading, refetchUsers }: { sites: Site[]
 
 export default function ManagementPage() {
   const { role } = useAuth();
-  const router = useRouter();
   
   const [sites, setSites] = useState<Site[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -531,12 +531,8 @@ export default function ManagementPage() {
   const [loadingUsers, setLoadingUsers] = useState(true);
 
   useEffect(() => {
-    if (role && role !== 'CEO') {
-      router.push('/');
-    }
-  }, [role, router]);
-
-  useEffect(() => {
+    // This listener fetches data but doesn't handle unauthorized access.
+    // The MainLayout component is now responsible for route protection.
     const unsubscribeSites = onSnapshot(query(collection(db, "sites")), (snapshot) => {
         const sitesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
         setSites(sitesData);
@@ -568,9 +564,9 @@ export default function ManagementPage() {
       setUsers(querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User)));
       setLoadingUsers(false);
   }
-
+  
   if (role !== 'CEO') {
-    return <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    return <FullPageLoader />;
   }
 
   return (

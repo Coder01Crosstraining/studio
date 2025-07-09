@@ -25,14 +25,9 @@ export default function HistoryPage() {
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   
   useEffect(() => {
-    if (role && role !== 'CEO') {
-      router.push('/');
-    }
-  }, [role, router]);
-
-  useEffect(() => {
+    // Role protection is now handled by the MainLayout, 
+    // so this effect only focuses on fetching data.
     async function fetchData() {
-      if (role !== 'CEO') return;
       setIsLoading(true);
 
       try {
@@ -40,12 +35,11 @@ export default function HistoryPage() {
         const historySnapshot = await getDocs(historyQuery);
         const fetchedHistory = historySnapshot.docs.map(doc => doc.data() as MonthlyHistory);
         
-        // Sort data on the client-side to avoid needing a composite index
         fetchedHistory.sort((a, b) => {
             if (a.year !== b.year) {
-                return b.year - a.year; // Descending year
+                return b.year - a.year;
             }
-            return b.month - a.month; // Descending month
+            return b.month - a.month;
         });
 
         setHistoryData(fetchedHistory);
@@ -63,7 +57,10 @@ export default function HistoryPage() {
         setIsLoading(false);
       }
     }
-    fetchData();
+
+    if (role === 'CEO') {
+        fetchData();
+    }
   }, [role]);
 
   const availableMonths = useMemo(() => {
@@ -102,7 +99,6 @@ export default function HistoryPage() {
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
-
 
   if (role !== 'CEO') {
     return <FullPageLoader />;

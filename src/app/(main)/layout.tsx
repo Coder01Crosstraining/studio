@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { FullPageLoader } from "@/components/loader";
@@ -9,6 +9,8 @@ import { SidebarNav } from "@/components/sidebar-nav";
 import { Button } from "@/components/ui/button";
 import { Menu, Building } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const CEO_ONLY_ROUTES = ['/management', '/history'];
 
 function MobileHeader() {
   const { toggleSidebar } = useSidebar();
@@ -86,16 +88,29 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, role, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   React.useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    
+    if (!user) {
       router.push("/login");
+      return;
     }
-  }, [user, loading, router]);
+    
+    if (role === 'SiteLeader' && CEO_ONLY_ROUTES.includes(pathname)) {
+        router.push("/");
+    }
+
+  }, [user, role, loading, router, pathname]);
 
   if (loading || !user) {
+    return <FullPageLoader />;
+  }
+  
+  if (role === 'SiteLeader' && CEO_ONLY_ROUTES.includes(pathname)) {
     return <FullPageLoader />;
   }
 
