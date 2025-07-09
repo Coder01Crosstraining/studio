@@ -75,7 +75,17 @@ export default function OneOnOnePage() {
             const sessionsRef = collection(db, 'sites', selectedSite, 'one-on-one-sessions');
             const q = query(sessionsRef, orderBy('sessionDate', 'desc'));
             const querySnapshot = await getDocs(q);
-            const fetchedSessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OneOnOneSession));
+            
+            const fetchedSessions = querySnapshot.docs.map(doc => {
+              const data = doc.data();
+              // Perform a basic check for critical data fields
+              if (!data.employeeName || !data.sessionDate || !data.employeeRole) {
+                console.warn("Documento de sesión con datos incompletos, omitiendo:", doc.id);
+                return null;
+              }
+              return { id: doc.id, ...data } as OneOnOneSession;
+            }).filter(Boolean) as OneOnOneSession[]; // filter(Boolean) removes any nulls
+
             setSessions(fetchedSessions);
         } catch (error) {
             console.error("Error fetching sessions:", error);
