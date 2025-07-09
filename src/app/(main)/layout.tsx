@@ -67,13 +67,13 @@ function LayoutContainer({ children }: { children: React.ReactNode }) {
 function UnassignedSiteMessage() {
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <div className="text-center space-y-2 p-8 rounded-lg border bg-card shadow-sm">
+      <div className="max-w-md space-y-2 rounded-lg border bg-card p-8 text-center shadow-sm">
         <Building className="mx-auto h-12 w-12 text-primary" />
         <h2 className="text-2xl font-bold tracking-tight">Aún no tienes una sede asignada</h2>
-        <p className="text-muted-foreground max-w-md">
+        <p className="text-muted-foreground">
           Un administrador (CEO) debe asignarte a una sede desde el panel de gestión para que puedas empezar a utilizar la plataforma.
         </p>
-         <p className="text-sm text-muted-foreground pt-2">
+         <p className="pt-2 text-sm text-muted-foreground">
           Mientras tanto, puedes configurar tu nombre y foto de perfil desde el menú de usuario.
         </p>
       </div>
