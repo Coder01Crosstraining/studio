@@ -11,6 +11,7 @@ export interface User {
   siteId: SiteId | null;
   photoURL?: string;
   documentId?: string;
+  status?: 'active' | 'inactive';
 }
 
 export interface Site {

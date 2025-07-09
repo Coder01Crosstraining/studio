@@ -58,6 +58,7 @@ export async function handleRegistration(values: RegisterFormValues) {
             role: 'SiteLeader', // Default role for new sign-ups
             siteId: null,      // To be assigned by a CEO
             photoURL: '',      // Default empty photo
+            status: 'active',  // Default status for new users
         });
 
         // 4. Mark the document ID as used

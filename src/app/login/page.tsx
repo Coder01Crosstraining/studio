@@ -71,6 +71,9 @@ export default function LoginPage() {
               case "auth/invalid-credential":
                   description = "El correo electrónico o la contraseña son incorrectos."
                   break;
+              case "auth/user-disabled":
+                  description = "Esta cuenta de usuario ha sido desactivada.";
+                  break;
               default:
                   description = "Error de autenticación. Por favor, inténtalo de nuevo."
                   break;
