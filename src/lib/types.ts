@@ -35,6 +35,7 @@ export interface DailyReport {
   leaderName: string;
   date: string; // YYYY-MM-DD
   newRevenue: number;
+  totalTransactions: number;
   renewalRate: number;
   dailyWin: string;
   dailyChallenge: string;
