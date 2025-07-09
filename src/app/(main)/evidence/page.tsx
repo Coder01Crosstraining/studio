@@ -76,14 +76,10 @@ export default function EvidencePage() {
         const sitesData = sitesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
         setSites(sitesData);
       } else if (user.siteId) {
-        const sessionsRef = collection(db, 'one-on-one-sessions');
-        // Remove orderBy and sort client-side to avoid needing a composite index
-        const sessionsQuery = query(sessionsRef, where('siteId', '==', user.siteId));
+        const sessionsRef = collection(db, 'sites', user.siteId, 'one-on-one-sessions');
+        const sessionsQuery = query(sessionsRef, orderBy('sessionDate', 'desc'));
         const sessionsSnapshot = await getDocs(sessionsQuery);
         const fetchedSessions = sessionsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OneOnOneSession));
-
-        fetchedSessions.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-
         setOneOnOneSessions(fetchedSessions);
       }
     }

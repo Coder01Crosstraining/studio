@@ -19,7 +19,7 @@ import { Loader2, PlusCircle, Eye } from 'lucide-react';
 import type { OneOnOneSession, EmployeeRole, SiteId, Site } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 const sessionSchema = z.object({
   employeeName: z.string().min(2, "El nombre es muy corto."),
@@ -72,12 +72,10 @@ export default function OneOnOnePage() {
         }
         setIsFetching(true);
         try {
-            const sessionsRef = collection(db, 'one-on-one-sessions');
-            const q = query(sessionsRef, where('siteId', '==', selectedSite));
+            const sessionsRef = collection(db, 'sites', selectedSite, 'one-on-one-sessions');
+            const q = query(sessionsRef, orderBy('sessionDate', 'desc'));
             const querySnapshot = await getDocs(q);
             const fetchedSessions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OneOnOneSession));
-
-            fetchedSessions.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
             setSessions(fetchedSessions);
         } catch (error) {
             console.error("Error fetching sessions:", error);
@@ -99,18 +97,25 @@ export default function OneOnOnePage() {
         leaderId: user.uid,
         createdAt: serverTimestamp()
       };
-      const docRef = await addDoc(collection(db, 'one-on-one-sessions'), newSessionData);
+
+      const sessionCollectionRef = collection(db, 'sites', user.siteId, 'one-on-one-sessions');
+      const docRef = await addDoc(sessionCollectionRef, newSessionData);
       
-      const newSession = { ...newSessionData, id: docRef.id, createdAt: Timestamp.now() } as OneOnOneSession;
-      setSessions(prev => [newSession, ...prev].sort((a,b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)));
+      const newSession = { 
+        ...newSessionData,
+        id: docRef.id, 
+        createdAt: Timestamp.now(), 
+      } as OneOnOneSession;
+
+      setSessions(prev => [newSession, ...prev].sort((a,b) => b.sessionDate.localeCompare(a.sessionDate)));
 
       toast({ title: 'Éxito', description: 'La nueva sesión 1-a-1 ha sido registrada.' });
-      setIsLoading(false);
       setIsFormOpen(false);
       form.reset({ sessionDate: format(new Date(), 'yyyy-MM-dd') });
     } catch (error) {
         console.error("Error adding session:", error);
         toast({ variant: "destructive", title: "Error", description: "No se pudo registrar la sesión." });
+    } finally {
         setIsLoading(false);
     }
   }
