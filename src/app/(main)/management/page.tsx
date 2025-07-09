@@ -18,10 +18,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, AlertTriangle, UserCog, UserX, UserCheck } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, AlertTriangle, UserCog, UserX, UserCheck, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { authorizeDocumentAction } from './actions';
 
 const siteSchema = z.object({
   name: z.string().min(3, "El nombre de la sede debe tener al menos 3 caracteres."),
@@ -41,6 +42,11 @@ const userSchema = z.object({
     message: "Se debe asignar una sede para el Líder de Sede.",
     path: ["siteId"],
 });
+
+const authorizeSchema = z.object({
+  documentId: z.string().min(5, "El número de cédula debe tener al menos 5 caracteres."),
+});
+
 
 function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[], users: User[], loading: boolean, refetchSites: () => void }) {
   const { toast } = useToast();
@@ -261,8 +267,14 @@ function UserManagement({ sites, users, loading, refetchUsers }: { sites: Site[]
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [togglingUser, setTogglingUser] = useState<User | null>(null);
+    const [isAuthorizeDialogOpen, setIsAuthorizeDialogOpen] = useState(false);
+    const [isAuthorizing, setIsAuthorizing] = useState(false);
 
     const form = useForm<z.infer<typeof userSchema>>({ resolver: zodResolver(userSchema) });
+    const authorizeForm = useForm<z.infer<typeof authorizeSchema>>({
+        resolver: zodResolver(authorizeSchema),
+        defaultValues: { documentId: "" }
+    });
 
     const handleOpenDialog = (user: User | null = null) => {
         setEditingUser(user);
@@ -308,103 +320,172 @@ function UserManagement({ sites, users, loading, refetchUsers }: { sites: Site[]
             setTogglingUser(null);
         }
     };
+    
+    const onAuthorizeSubmit = async (values: z.infer<typeof authorizeSchema>) => {
+        setIsAuthorizing(true);
+        const result = await authorizeDocumentAction(values.documentId);
+        if (result.success) {
+            toast({ title: "Éxito", description: "La cédula ha sido autorizada y el nuevo usuario ya puede registrarse." });
+            setIsAuthorizeDialogOpen(false);
+            authorizeForm.reset();
+        } else {
+            toast({ variant: "destructive", title: "Error", description: result.error });
+        }
+        setIsAuthorizing(false);
+    };
   
     const siteMap = useMemo(() => new Map(sites.map(s => [s.id, s.name])), [sites]);
     const { role: formRole } = form.watch();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Gestionar Usuarios</CardTitle>
-        <CardDescription>Edita los roles, asignaciones y estado de los usuarios.</CardDescription>
-        <div className="!mt-4 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-md">
-            <div className="flex items-start">
-                <AlertTriangle className="h-5 w-5 mr-2 mt-0.5"/>
-                <div>
-                    <p className="font-bold">Nota de Seguridad</p>
-                    <p className="text-sm">La creación de usuarios se realiza desde la página de registro (validando cédulas autorizadas). Para eliminar permanentemente un usuario, debe hacerse desde la Consola de Firebase.</p>
-                </div>
-            </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {loading ? <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-          <>
-            {/* Mobile View */}
-            <div className="space-y-4 md:hidden">
-              {users.map(user => (
-                <Card key={user.uid} className={cn(user.status === 'inactive' && 'opacity-60 bg-muted/50')}>
-                  <CardHeader className="p-4 flex flex-row items-start justify-between">
-                      <div>
-                        <CardTitle className="text-base">{user.name}</CardTitle>
-                        <CardDescription>{user.email}</CardDescription>
-                      </div>
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(user)}><Edit className="h-4 w-4" /></Button>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0 text-sm space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div><p className="text-muted-foreground">Rol</p><p className="font-medium">{user.role}</p></div>
-                        <div><p className="text-muted-foreground">Sede</p><p className="font-medium">{user.siteId ? siteMap.get(user.siteId) || 'N/A' : 'N/A'}</p></div>
-                      </div>
-                       <div className="flex justify-between items-center border-t pt-4">
-                            <div>
-                                <p className="text-muted-foreground">Estado</p>
-                                <Badge variant={user.status === 'inactive' ? 'destructive' : 'default'} className="mt-1">
-                                    {user.status === 'inactive' ? 'Inactivo' : 'Activo'}
-                                </Badge>
-                            </div>
-                            <Button 
-                                variant={user.status === 'inactive' ? 'default' : 'destructive'} 
-                                size="sm"
-                                disabled={currentUser?.uid === user.uid}
-                                onClick={() => setTogglingUser(user)}
-                            >
-                                {user.status === 'inactive' ? 'Reactivar' : 'Desactivar'}
-                            </Button>
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                  <CardTitle>Gestionar Usuarios</CardTitle>
+                  <CardDescription>Edita los roles, asignaciones y estado de los usuarios.</CardDescription>
+              </div>
+              <Button onClick={() => setIsAuthorizeDialogOpen(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" /> Autorizar Cédula
+              </Button>
+          </div>
+          <div className="!mt-4 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-md">
+              <div className="flex items-start">
+                  <AlertTriangle className="h-5 w-5 mr-2 mt-0.5"/>
+                  <div>
+                      <p className="font-bold">Nota de Seguridad</p>
+                      <p className="text-sm">La creación de usuarios se realiza desde la página de registro (validando cédulas autorizadas). Para eliminar permanentemente un usuario, debe hacerse desde la Consola de Firebase.</p>
+                  </div>
+              </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
+            <>
+              {/* Mobile View */}
+              <div className="space-y-4 md:hidden">
+                {users.map(user => (
+                  <Card key={user.uid} className={cn(user.status === 'inactive' && 'opacity-60 bg-muted/50')}>
+                    <CardHeader className="p-4 flex flex-row items-start justify-between">
+                        <div>
+                          <CardTitle className="text-base">{user.name}</CardTitle>
+                          <CardDescription>{user.email}</CardDescription>
                         </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            
-            {/* Desktop View */}
-            <div className="hidden md:block">
-              <Table>
-                <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Email</TableHead><TableHead>Rol</TableHead><TableHead>Sede</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {users.map(user => (
-                    <TableRow key={user.uid} className={cn(user.status === 'inactive' && 'text-muted-foreground opacity-60')}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.role}</TableCell>
-                      <TableCell>{user.siteId ? siteMap.get(user.siteId) || 'N/A' : 'N/A'}</TableCell>
-                      <TableCell>
-                          <Badge variant={user.status === 'inactive' ? 'outline' : 'secondary'} className={cn(
-                              user.status === 'inactive' ? 'border-destructive/80 text-destructive' : 'border-green-400/30 bg-green-400/20 text-green-700'
-                          )}>
-                              {user.status === 'inactive' ? 'Inactivo' : 'Activo'}
-                          </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(user)}><Edit className="h-4 w-4" /></Button>
-                        <Button 
-                            variant="ghost" 
-                            size="icon"
-                            disabled={currentUser?.uid === user.uid}
-                            onClick={() => setTogglingUser(user)}
-                            title={user.status === 'inactive' ? 'Reactivar Usuario' : 'Desactivar Usuario'}
-                        >
-                            {user.status === 'inactive' ? <UserCheck className="h-4 w-4 text-green-600"/> : <UserX className="h-4 w-4 text-destructive"/>}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </>
-        )}
-      </CardContent>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0 text-sm space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div><p className="text-muted-foreground">Rol</p><p className="font-medium">{user.role}</p></div>
+                          <div><p className="text-muted-foreground">Sede</p><p className="font-medium">{user.siteId ? siteMap.get(user.siteId) || 'N/A' : 'N/A'}</p></div>
+                        </div>
+                         <div className="flex justify-between items-center border-t pt-4">
+                              <div>
+                                  <p className="text-muted-foreground">Estado</p>
+                                  <Badge variant={user.status === 'inactive' ? 'destructive' : 'default'} className="mt-1">
+                                      {user.status === 'inactive' ? 'Inactivo' : 'Activo'}
+                                  </Badge>
+                              </div>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                      variant={user.status === 'inactive' ? 'default' : 'destructive'} 
+                                      size="sm"
+                                      disabled={currentUser?.uid === user.uid}
+                                  >
+                                      {user.status === 'inactive' ? 'Reactivar' : 'Desactivar'}
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            {`Estás a punto de ${user?.status === 'inactive' ? 'reactivar' : 'desactivar'} la cuenta de ${user?.name}. `}
+                                            {user?.status !== 'inactive' ? 'El usuario no podrá iniciar sesión.' : 'El usuario podrá volver a acceder al sistema.'}
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={() => handleToggleUserStatus(user)}
+                                            disabled={isSubmittingStatus}
+                                            className={user?.status === 'inactive' ? '' : 'bg-destructive hover:bg-destructive/90'}
+                                        >
+                                            {isSubmittingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            {user?.status === 'inactive' ? 'Reactivar' : 'Desactivar'}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                          </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              
+              {/* Desktop View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader><TableRow><TableHead>Nombre</TableHead><TableHead>Email</TableHead><TableHead>Rol</TableHead><TableHead>Sede</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {users.map(user => (
+                      <TableRow key={user.uid} className={cn(user.status === 'inactive' && 'text-muted-foreground opacity-60')}>
+                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.role}</TableCell>
+                        <TableCell>{user.siteId ? siteMap.get(user.siteId) || 'N/A' : 'N/A'}</TableCell>
+                        <TableCell>
+                            <Badge variant={user.status === 'inactive' ? 'outline' : 'secondary'} className={cn(
+                                user.status === 'inactive' ? 'border-destructive/80 text-destructive' : 'border-green-400/30 bg-green-400/20 text-green-700'
+                            )}>
+                                {user.status === 'inactive' ? 'Inactivo' : 'Activo'}
+                            </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(user)}><Edit className="h-4 w-4" /></Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  disabled={currentUser?.uid === user.uid}
+                                  title={user.status === 'inactive' ? 'Reactivar Usuario' : 'Desactivar Usuario'}
+                              >
+                                  {user.status === 'inactive' ? <UserCheck className="h-4 w-4 text-green-600"/> : <UserX className="h-4 w-4 text-destructive"/>}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                      {`Estás a punto de ${user?.status === 'inactive' ? 'reactivar' : 'desactivar'} la cuenta de ${user?.name}. `}
+                                      {user?.status !== 'inactive' ? 'El usuario no podrá iniciar sesión.' : 'El usuario podrá volver a acceder al sistema.'}
+                                  </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                      onClick={() => handleToggleUserStatus(user)}
+                                      disabled={isSubmittingStatus}
+                                      className={user?.status === 'inactive' ? '' : 'bg-destructive hover:bg-destructive/90'}
+                                  >
+                                      {isSubmittingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                      {user?.status === 'inactive' ? 'Reactivar' : 'Desactivar'}
+                                  </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
               <DialogHeader><DialogTitle>Editar Usuario</DialogTitle></DialogHeader>
@@ -440,29 +521,36 @@ function UserManagement({ sites, users, loading, refetchUsers }: { sites: Site[]
               </Form>
           </DialogContent>
       </Dialog>
-      <AlertDialog open={!!togglingUser} onOpenChange={(isOpen) => !isOpen && setTogglingUser(null)}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    {`Estás a punto de ${togglingUser?.status === 'inactive' ? 'reactivar' : 'desactivar'} la cuenta de ${togglingUser?.name}. `}
-                    {togglingUser?.status !== 'inactive' ? 'El usuario no podrá iniciar sesión.' : 'El usuario podrá volver a acceder al sistema.'}
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setTogglingUser(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                    onClick={() => togglingUser && handleToggleUserStatus(togglingUser)}
-                    disabled={isSubmittingStatus}
-                    className={togglingUser?.status === 'inactive' ? '' : 'bg-destructive hover:bg-destructive/90'}
-                >
-                    {isSubmittingStatus && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {togglingUser?.status === 'inactive' ? 'Reactivar' : 'Desactivar'}
-                </AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
-    </Card>
+      
+      <Dialog open={isAuthorizeDialogOpen} onOpenChange={setIsAuthorizeDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Autorizar Nueva Cédula</DialogTitle>
+                <DialogDescription>
+                    Ingresa el número de cédula del nuevo usuario para permitirle registrarse en la plataforma.
+                </DialogDescription>
+            </DialogHeader>
+            <Form {...authorizeForm}>
+              <form onSubmit={authorizeForm.handleSubmit(onAuthorizeSubmit)} className="space-y-4 py-4">
+                  <FormField control={authorizeForm.control} name="documentId" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Número de Cédula</FormLabel>
+                      <FormControl><Input placeholder="123456789" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <DialogFooter>
+                    <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                    <Button type="submit" disabled={isAuthorizing}>
+                      {isAuthorizing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Autorizar
+                    </Button>
+                  </DialogFooter>
+              </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -521,7 +609,7 @@ export default function ManagementPage() {
   return (
     <div className="w-full space-y-4">
       <h2 className="text-3xl font-bold tracking-tight">Gestión de Usuarios y Sedes</h2>
-      <Tabs defaultValue="sites" className="w-full">
+      <Tabs defaultValue="users" className="w-full">
         <TabsList>
           <TabsTrigger value="sites">Sedes</TabsTrigger>
           <TabsTrigger value="users">Usuarios</TabsTrigger>
