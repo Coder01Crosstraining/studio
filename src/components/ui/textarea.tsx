@@ -3,7 +3,24 @@ import * as React from 'react';
 import {cn} from '@/lib/utils';
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<'textarea'>>(
-  ({className, value, ...props}, ref) => {
+  ({className, value, onChange, ...props}, ref) => {
+
+    const sanitizeInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      // Basic sanitization: strip HTML tags to prevent XSS.
+      // A more robust solution might use a library like DOMPurify if needed.
+      const sanitizedValue = e.target.value.replace(/<[^>]*>?/gm, '');
+      
+      // Create a new event with the sanitized value to pass to the original onChange handler
+      const newEvent = {
+        ...e,
+        target: { ...e.target, value: sanitizedValue },
+      };
+
+      if (onChange) {
+        onChange(newEvent as React.ChangeEvent<HTMLTextAreaElement>);
+      }
+    };
+
     return (
       <textarea
         className={cn(
@@ -12,6 +29,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<'tex
         )}
         ref={ref}
         value={value ?? ''}
+        onChange={sanitizeInput}
         {...props}
       />
     );
