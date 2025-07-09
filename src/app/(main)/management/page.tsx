@@ -353,16 +353,14 @@ function UserManagement({ sites, users, loading, refetchUsers }: { sites: Site[]
                                     {user.status === 'inactive' ? 'Inactivo' : 'Activo'}
                                 </Badge>
                             </div>
-                            <AlertDialogTrigger asChild>
-                                <Button 
-                                    variant={user.status === 'inactive' ? 'default' : 'destructive'} 
-                                    size="sm"
-                                    disabled={currentUser?.uid === user.uid}
-                                    onClick={() => setTogglingUser(user)}
-                                >
-                                    {user.status === 'inactive' ? 'Reactivar' : 'Desactivar'}
-                                </Button>
-                            </AlertDialogTrigger>
+                            <Button 
+                                variant={user.status === 'inactive' ? 'default' : 'destructive'} 
+                                size="sm"
+                                disabled={currentUser?.uid === user.uid}
+                                onClick={() => setTogglingUser(user)}
+                            >
+                                {user.status === 'inactive' ? 'Reactivar' : 'Desactivar'}
+                            </Button>
                         </div>
                   </CardContent>
                 </Card>
@@ -389,17 +387,15 @@ function UserManagement({ sites, users, loading, refetchUsers }: { sites: Site[]
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(user)}><Edit className="h-4 w-4" /></Button>
-                         <AlertDialogTrigger asChild>
-                            <Button 
-                                variant="ghost" 
-                                size="icon"
-                                disabled={currentUser?.uid === user.uid}
-                                onClick={() => setTogglingUser(user)}
-                                title={user.status === 'inactive' ? 'Reactivar Usuario' : 'Desactivar Usuario'}
-                            >
-                                {user.status === 'inactive' ? <UserCheck className="h-4 w-4 text-green-600"/> : <UserX className="h-4 w-4 text-destructive"/>}
-                            </Button>
-                        </AlertDialogTrigger>
+                        <Button 
+                            variant="ghost" 
+                            size="icon"
+                            disabled={currentUser?.uid === user.uid}
+                            onClick={() => setTogglingUser(user)}
+                            title={user.status === 'inactive' ? 'Reactivar Usuario' : 'Desactivar Usuario'}
+                        >
+                            {user.status === 'inactive' ? <UserCheck className="h-4 w-4 text-green-600"/> : <UserX className="h-4 w-4 text-destructive"/>}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
