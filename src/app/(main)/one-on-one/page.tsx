@@ -120,6 +120,17 @@ export default function OneOnOnePage() {
     }
   }
 
+  const getSafeSessionDate = (session: OneOnOneSession): Date => {
+    const dateValue = session.sessionDate;
+    if (dateValue && typeof (dateValue as any).toDate === 'function') {
+      return (dateValue as any).toDate();
+    }
+    if (typeof dateValue === 'string') {
+      return new Date(dateValue.replace(/-/g, '/'));
+    }
+    return new Date();
+  };
+
   const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
   return (
@@ -201,14 +212,14 @@ export default function OneOnOnePage() {
                     <CardHeader className="p-4 flex flex-row items-center justify-between">
                         <div>
                             <CardTitle className="text-base">{session.employeeName}</CardTitle>
-                            <CardDescription>{employeeRoleText[session.employeeRole]} - {format(new Date(session.sessionDate.replace(/-/g, '/')), 'PPP', { locale: es })}</CardDescription>
+                            <CardDescription>{employeeRoleText[session.employeeRole]} - {format(getSafeSessionDate(session), 'PPP', { locale: es })}</CardDescription>
                         </div>
                         <Dialog onOpenChange={(open) => !open && setSelectedSession(null)}>
                           <DialogTrigger asChild><Button variant="ghost" size="icon" onClick={() => setSelectedSession(session)}><Eye className="h-4 w-4" /></Button></DialogTrigger>
                           <DialogContent className="sm:max-w-[625px]">
                             <DialogHeader>
                               <DialogTitle>Sesión con {selectedSession?.employeeName}</DialogTitle>
-                              <DialogDescription>Detalles de la sesión del {selectedSession && format(new Date(selectedSession.sessionDate.replace(/-/g, '/')), 'PPP', { locale: es })}</DialogDescription>
+                              <DialogDescription>Detalles de la sesión del {selectedSession && format(getSafeSessionDate(selectedSession), 'PPP', { locale: es })}</DialogDescription>
                             </DialogHeader>
                             {selectedSession && <div className="space-y-4 py-4 text-sm">
                               <div><p className="font-semibold">Nivel de Energía</p><p className="text-muted-foreground">{selectedSession.energyCheckIn}/10</p></div>
@@ -232,7 +243,7 @@ export default function OneOnOnePage() {
                     {sessions.length === 0 && <TableRow><TableCell colSpan={4} className="h-24 text-center">No hay sesiones registradas para esta sede.</TableCell></TableRow>}
                     {sessions.map((session) => (
                       <TableRow key={session.id}>
-                        <TableCell>{format(new Date(session.sessionDate.replace(/-/g, '/')), 'PPP', { locale: es })}</TableCell>
+                        <TableCell>{format(getSafeSessionDate(session), 'PPP', { locale: es })}</TableCell>
                         <TableCell className="font-medium">{session.employeeName}</TableCell>
                         <TableCell>{employeeRoleText[session.employeeRole]}</TableCell>
                         <TableCell className="text-right">
@@ -241,7 +252,7 @@ export default function OneOnOnePage() {
                             <DialogContent className="sm:max-w-[625px]">
                               <DialogHeader>
                                 <DialogTitle>Sesión con {selectedSession?.employeeName}</DialogTitle>
-                                <DialogDescription>Detalles de la sesión del {selectedSession && format(new Date(selectedSession.sessionDate.replace(/-/g, '/')), 'PPP', { locale: es })}</DialogDescription>
+                                <DialogDescription>Detalles de la sesión del {selectedSession && format(getSafeSessionDate(selectedSession), 'PPP', { locale: es })}</DialogDescription>
                               </DialogHeader>
                               {selectedSession && <div className="space-y-4 py-4 text-sm">
                                 <div><p className="font-semibold">Nivel de Energía</p><p className="text-muted-foreground">{selectedSession.energyCheckIn}/10</p></div>
