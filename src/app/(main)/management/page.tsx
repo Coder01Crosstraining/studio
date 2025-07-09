@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/lib/auth';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, query, onSnapshot } from 'firebase/firestore';
 import type { Site, User, UserRole, SiteId } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Trash2, Loader2, AlertTriangle, UserCog, UserX, UserCheck, UserPlus } from 'lucide-react';
+import { PlusCircle, Edit, Loader2, AlertTriangle, UserCog, UserX, UserCheck, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -131,26 +131,12 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
     }
   };
 
-  const handleSiteDelete = async (siteId: SiteId) => {
-    setIsSubmitting(true);
-    try {
-      await deleteDoc(doc(db, "sites", siteId));
-      toast({ title: "Sede Eliminada", description: "La sede ha sido eliminada permanentemente." });
-      refetchSites();
-    } catch (error) {
-      console.error("Error deleting site: ", error);
-      toast({ variant: "destructive", title: "Error", description: "No se pudo eliminar la sede." });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
             <CardTitle>Gestionar Sedes</CardTitle>
-            <CardDescription className="pt-1">Añade, edita o elimina sedes de VIBRA.</CardDescription>
+            <CardDescription className="pt-1">Añade o edita sedes de VIBRA.</CardDescription>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -202,16 +188,6 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
                     </div>
                     <div className="flex items-center">
                       <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(site)}><Edit className="h-4 w-4" /></Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Esto eliminará permanentemente la sede. Los usuarios asignados a esta sede deberán ser reasignados.</AlertDialogDescription></AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleSiteDelete(site.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
                     </div>
                   </CardContent>
                 </Card>
@@ -236,16 +212,6 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
                       <TableCell className="text-muted-foreground text-xs">{site.spreadsheetId || 'No asignado'}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(site)}><Edit className="h-4 w-4" /></Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader><AlertDialogTitle>¿Estás seguro?</AlertDialogTitle><AlertDialogDescription>Esta acción no se puede deshacer. Esto eliminará permanentemente la sede. Los usuarios asignados a esta sede deberán ser reasignados.</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleSiteDelete(site.id)} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))}
