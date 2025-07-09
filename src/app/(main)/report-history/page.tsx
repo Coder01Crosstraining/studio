@@ -107,8 +107,12 @@ export default function ReportHistoryPage() {
                         <div>
                           <CardTitle className="text-base">{format(new Date(report.date.replace(/-/g, '/')), 'PPP', { locale: es })}</CardTitle>
                           <CardDescription>
-                            {role === 'CEO' ? `${siteMap.get(report.siteId) || report.siteId} - ` : ''}
-                            {report.leaderName}
+                            {role === 'CEO' ? `${siteMap.get(report.siteId) || report.siteId} - ` : ''}{report.leaderName}
+                            {role === 'CEO' && report.submittedAt && (
+                                <p className="text-xs mt-1 text-muted-foreground">
+                                    Enviado: {format(report.submittedAt.toDate(), 'PPP p', { locale: es })}
+                                </p>
+                            )}
                           </CardDescription>
                         </div>
                         <Dialog onOpenChange={(open) => !open && setSelectedReport(null)}>
@@ -120,7 +124,10 @@ export default function ReportHistoryPage() {
                           <DialogContent className="sm:max-w-[625px]">
                             <DialogHeader>
                               <DialogTitle>Reporte de {siteMap.get(report.siteId) || report.siteId} - {format(new Date(report.date.replace(/-/g, '/')), 'PPP', { locale: es })}</DialogTitle>
-                              <DialogDescription>Enviado por {report.leaderName}</DialogDescription>
+                              <DialogDescription>
+                                Enviado por {report.leaderName}
+                                {role === 'CEO' && selectedReport?.submittedAt && ` el ${format(selectedReport.submittedAt.toDate(), 'PPP p', { locale: es })}`}
+                              </DialogDescription>
                             </DialogHeader>
                             {selectedReport && (
                             <div className="space-y-4 py-4 text-sm">
@@ -155,7 +162,8 @@ export default function ReportHistoryPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Fecha</TableHead>
+                      <TableHead>Fecha del Reporte</TableHead>
+                      {role === 'CEO' && <TableHead>Fecha de Envío</TableHead>}
                       {role === 'CEO' && <TableHead>Sede</TableHead>}
                       <TableHead>Líder</TableHead>
                       <TableHead className="text-right">Ventas</TableHead>
@@ -164,11 +172,12 @@ export default function ReportHistoryPage() {
                   </TableHeader>
                   <TableBody>
                     {reports.length === 0 && (
-                        <TableRow><TableCell colSpan={role === 'CEO' ? 5 : 4} className="h-24 text-center">No hay reportes para esta sede.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={role === 'CEO' ? 6 : 4} className="h-24 text-center">No hay reportes para esta sede.</TableCell></TableRow>
                     )}
                     {reports.map((report) => (
                       <TableRow key={report.id}>
                         <TableCell>{format(new Date(report.date.replace(/-/g, '/')), 'PPP', { locale: es })}</TableCell>
+                        {role === 'CEO' && <TableCell>{report.submittedAt ? format(report.submittedAt.toDate(), 'PPP p', { locale: es }) : 'N/A'}</TableCell>}
                         {role === 'CEO' && <TableCell>{siteMap.get(report.siteId) || report.siteId}</TableCell>}
                         <TableCell className="font-medium">{report.leaderName}</TableCell>
                         <TableCell className="text-right">{formatCurrency(report.newRevenue)}</TableCell>
@@ -182,7 +191,10 @@ export default function ReportHistoryPage() {
                             <DialogContent className="sm:max-w-[625px]">
                               <DialogHeader>
                                 <DialogTitle>Reporte de {siteMap.get(report.siteId) || report.siteId} - {format(new Date(report.date.replace(/-/g, '/')), 'PPP', { locale: es })}</DialogTitle>
-                                <DialogDescription>Enviado por {report.leaderName}</DialogDescription>
+                                <DialogDescription>
+                                  Enviado por {selectedReport?.leaderName}
+                                  {role === 'CEO' && selectedReport?.submittedAt && ` el ${format(selectedReport.submittedAt.toDate(), 'PPP p', { locale: es })}`}
+                                </DialogDescription>
                               </DialogHeader>
                               {selectedReport && (
                               <div className="space-y-4 py-4 text-sm">
