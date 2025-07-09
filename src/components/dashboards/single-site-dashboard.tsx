@@ -291,10 +291,6 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Ticket Promedio</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.averageTicket)}</div></CardContent>
-            </Card>
-            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Tasa de Retención (Mes)</CardTitle></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{kpiData.retention.toFixed(1)}%</div></CardContent>
             </Card>

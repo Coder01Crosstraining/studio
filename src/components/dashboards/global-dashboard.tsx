@@ -144,7 +144,6 @@ export function GlobalDashboard() {
               finalRevenue: siteData.revenue,
               finalRetention: siteData.retention,
               finalNps: siteData.nps,
-              finalAverageTicket: siteData.averageTicket,
               monthlyGoal: siteData.monthlyGoal,
             };
             batch.set(historyDocRef, historyData);
@@ -154,8 +153,6 @@ export function GlobalDashboard() {
               revenue: 0,
               retention: 0,
               nps: 0,
-              averageTicket: 0,
-              totalTransactions: 0,
             });
           });
           
@@ -289,15 +286,14 @@ export function GlobalDashboard() {
 
   const globalSummary = useMemo(() => {
     const siteCount = Object.keys(kpiData).length;
-    if (siteCount === 0) return { revenue: 0, retention: 0, nps: 0, averageTicket: 0, salesForecast: 0, monthlyGoal: 0 };
+    if (siteCount === 0) return { revenue: 0, retention: 0, nps: 0, salesForecast: 0, monthlyGoal: 0 };
     
     const totalRevenue = Object.values(kpiData).reduce((sum, site) => sum + site.revenue, 0);
     const avgRetention = Object.values(kpiData).reduce((sum, site) => sum + site.retention, 0) / siteCount;
     const avgNps = Object.values(kpiData).reduce((sum, site) => sum + site.nps, 0) / siteCount;
-    const avgTicket = Object.values(kpiData).reduce((sum, site) => sum + site.averageTicket, 0) / siteCount;
     const totalForecast = Object.values(forecasts).reduce((sum, site) => sum + (site?.forecast || 0), 0);
     const totalMonthlyGoal = Object.values(kpiData).reduce((sum, site) => sum + site.monthlyGoal, 0);
-    return { revenue: totalRevenue, retention: avgRetention, nps: avgNps, averageTicket: avgTicket, salesForecast: totalForecast, monthlyGoal: totalMonthlyGoal };
+    return { revenue: totalRevenue, retention: avgRetention, nps: avgNps, salesForecast: totalForecast, monthlyGoal: totalMonthlyGoal };
   }, [kpiData, forecasts]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
@@ -388,10 +384,6 @@ export function GlobalDashboard() {
                                     <p className="text-muted-foreground">NPS</p>
                                     <p className="font-semibold">{data.nps.toFixed(2)}</p>
                                 </div>
-                                <div className="space-y-1">
-                                    <p className="text-muted-foreground">Ticket Promedio</p>
-                                    <p className="font-semibold">{formatCurrency(data.averageTicket)}</p>
-                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -413,7 +405,6 @@ export function GlobalDashboard() {
                         <TableHead className="text-right min-w-[150px]">Meta del Mes</TableHead>
                         <TableHead className="text-right min-w-[150px]">Cumplimiento (%)</TableHead>
                         <TableHead className="text-right min-w-[150px]">Pronóstico Ventas</TableHead>
-                        <TableHead className="text-right min-w-[150px] hidden lg:table-cell">Ticket Promedio</TableHead>
                         <TableHead className="text-right min-w-[120px] hidden lg:table-cell">Retención</TableHead>
                         <TableHead className="text-right min-w-[120px] hidden lg:table-cell">NPS</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
@@ -438,7 +429,6 @@ export function GlobalDashboard() {
                             </div>
                             )}
                         </TableCell>
-                        <TableCell className="text-right hidden lg:table-cell">{formatCurrency(data.averageTicket)}</TableCell>
                         <TableCell className="text-right hidden lg:table-cell">{data.retention.toFixed(1)}%</TableCell>
                         <TableCell className="text-right hidden lg:table-cell">{data.nps.toFixed(2)}</TableCell>
                         <TableCell className="text-right">

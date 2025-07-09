@@ -86,15 +86,14 @@ export default function HistoryPage() {
   
   const globalSummary = useMemo(() => {
     const dataCount = filteredData.length;
-    if (dataCount === 0) return { revenue: 0, retention: 0, nps: 0, averageTicket: 0, monthlyGoal: 0 };
+    if (dataCount === 0) return { revenue: 0, retention: 0, nps: 0, monthlyGoal: 0 };
     
     const totalRevenue = filteredData.reduce((sum, item) => sum + item.finalRevenue, 0);
     const avgRetention = filteredData.reduce((sum, item) => sum + item.finalRetention, 0) / dataCount;
     const avgNps = filteredData.reduce((sum, item) => sum + item.finalNps, 0) / dataCount;
-    const avgTicket = filteredData.reduce((sum, item) => sum + item.finalAverageTicket, 0) / dataCount;
     const totalMonthlyGoal = filteredData.reduce((sum, item) => sum + item.monthlyGoal, 0);
     
-    return { revenue: totalRevenue, retention: avgRetention, nps: avgNps, averageTicket: avgTicket, monthlyGoal: totalMonthlyGoal };
+    return { revenue: totalRevenue, retention: avgRetention, nps: avgNps, monthlyGoal: totalMonthlyGoal };
   }, [filteredData]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
@@ -174,11 +173,10 @@ export default function HistoryPage() {
                         <TableHead className="text-right">Cumplimiento</TableHead>
                         <TableHead className="text-right">Retención</TableHead>
                         <TableHead className="text-right">NPS</TableHead>
-                        <TableHead className="text-right">Ticket Promedio</TableHead>
                     </TableRow></TableHeader>
                     <TableBody>
                         {filteredData.length === 0 ? (
-                            <TableRow><TableCell colSpan={7} className="h-24 text-center">No hay datos históricos para la selección actual.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={6} className="h-24 text-center">No hay datos históricos para la selección actual.</TableCell></TableRow>
                         ) : (
                             filteredData.map(item => {
                                 const goalCompletion = item.monthlyGoal > 0 ? (item.finalRevenue / item.monthlyGoal) * 100 : 0;
@@ -190,7 +188,6 @@ export default function HistoryPage() {
                                     <TableCell className="text-right font-medium">{goalCompletion.toFixed(1)}%</TableCell>
                                     <TableCell className="text-right">{item.finalRetention.toFixed(1)}%</TableCell>
                                     <TableCell className="text-right">{item.finalNps.toFixed(2)}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(item.finalAverageTicket)}</TableCell>
                                 </TableRow>
                                 )
                             })

@@ -25,7 +25,6 @@ import type { Site } from '@/lib/types';
 const reportSchema = z.object({
   date: z.date({ required_error: "Se requiere una fecha para el reporte." }),
   newRevenue: z.coerce.number().min(0, "Los ingresos no pueden ser negativos."),
-  totalTransactions: z.coerce.number().min(0, "El número de transacciones no puede ser negativo."),
   renewalRate: z.coerce.number().min(0).max(100, "La tasa de renovación debe estar entre 0 y 100."),
   dailyWin: z.string().min(3, "El logro del día debe tener al menos 3 caracteres.").max(500),
   dailyChallenge: z.string().min(3, "El desafío del día debe tener al menos 3 caracteres.").max(500),
@@ -45,7 +44,6 @@ export default function DailyReportPage() {
     defaultValues: {
       date: new Date(),
       newRevenue: 0,
-      totalTransactions: 0,
       renewalRate: 0,
       dailyWin: '',
       dailyChallenge: '',
@@ -103,13 +101,9 @@ export default function DailyReportPage() {
             const currentData = siteDoc.data() as Site;
             
             const newTotalRevenue = (currentData.revenue || 0) + values.newRevenue;
-            const newTotalTransactions = (currentData.totalTransactions || 0) + values.totalTransactions;
-            const newAverageTicket = newTotalTransactions > 0 ? newTotalRevenue / newTotalTransactions : 0;
             
             transaction.update(siteRef, {
                 revenue: newTotalRevenue,
-                totalTransactions: newTotalTransactions,
-                averageTicket: newAverageTicket,
             });
 
             const reportCollectionRef = collection(db, "sites", user.siteId, "daily-reports");
@@ -126,7 +120,7 @@ export default function DailyReportPage() {
 
         toast({
             title: "¡Éxito!",
-            description: "Tu reporte diario ha sido enviado y el ticket promedio ha sido actualizado.",
+            description: "Tu reporte diario ha sido enviado.",
         });
         router.push('/');
     } catch (error) {
@@ -189,12 +183,9 @@ export default function DailyReportPage() {
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <FormField control={form.control} name="newRevenue" render={({ field }) => (
                   <FormItem><FormLabel>Ventas del Día (COP)</FormLabel><FormControl><Input type="number" placeholder="1500000" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="totalTransactions" render={({ field }) => (
-                  <FormItem><FormLabel>Número de Transacciones</FormLabel><FormControl><Input type="number" placeholder="15" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="renewalRate" render={({ field }) => (
                   <FormItem><FormLabel>Tasa de Renovación (%)</FormLabel><FormControl><Input type="number" placeholder="85" {...field} /></FormControl><FormMessage /></FormItem>

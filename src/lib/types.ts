@@ -21,8 +21,6 @@ export interface Site {
   monthlyGoal: number;
   retention: number;
   nps: number;
-  averageTicket: number;
-  totalTransactions: number;
   spreadsheetId?: string;
   spreadsheetGid?: string;
   npsLastUpdatedAt?: Timestamp;
@@ -35,7 +33,6 @@ export interface DailyReport {
   leaderName: string;
   date: string; // YYYY-MM-DD
   newRevenue: number;
-  totalTransactions: number;
   renewalRate: number;
   dailyWin: string;
   dailyChallenge: string;
@@ -82,6 +79,5 @@ export interface MonthlyHistory {
   finalRevenue: number;
   finalRetention: number;
   finalNps: number;
-  finalAverageTicket: number;
   monthlyGoal: number;
 }
