@@ -25,9 +25,9 @@ const reportSchema = z.object({
   date: z.date({ required_error: "Se requiere una fecha para el reporte." }),
   newRevenue: z.coerce.number().min(0, "Los ingresos no pueden ser negativos."),
   renewalRate: z.coerce.number().min(0).max(100, "La tasa de renovación debe estar entre 0 y 100."),
-  dailyWin: z.string().min(10, "El logro del día debe tener al menos 10 caracteres.").max(500),
-  dailyChallenge: z.string().min(10, "El desafío del día debe tener al menos 10 caracteres.").max(500),
-  lessonLearned: z.string().min(10, "La lección aprendida debe tener al menos 10 caracteres.").max(500),
+  dailyWin: z.string().min(3, "El logro del día debe tener al menos 3 caracteres.").max(500),
+  dailyChallenge: z.string().min(3, "El desafío del día debe tener al menos 3 caracteres.").max(500),
+  lessonLearned: z.string().min(3, "La lección aprendida debe tener al menos 3 caracteres.").max(500),
 });
 
 export default function DailyReportPage() {
