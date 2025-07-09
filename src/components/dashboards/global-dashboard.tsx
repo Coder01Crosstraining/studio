@@ -155,6 +155,7 @@ export function GlobalDashboard() {
               retention: 0,
               nps: 0,
               averageTicket: 0,
+              totalTransactions: 0,
             });
           });
           

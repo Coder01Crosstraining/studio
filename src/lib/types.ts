@@ -22,6 +22,7 @@ export interface Site {
   retention: number;
   nps: number;
   averageTicket: number;
+  totalTransactions: number;
   spreadsheetId?: string;
   spreadsheetGid?: string;
   npsLastUpdatedAt?: Timestamp;

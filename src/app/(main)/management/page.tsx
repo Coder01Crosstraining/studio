@@ -118,6 +118,7 @@ function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[]
           retention: 0,
           nps: 0,
           averageTicket: 0,
+          totalTransactions: 0,
         });
         toast({ title: "Sede Creada", description: "La nueva sede ha sido creada exitosamente." });
       }

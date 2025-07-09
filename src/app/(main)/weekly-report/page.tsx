@@ -19,11 +19,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, getDoc, runTransaction } from 'firebase/firestore';
+import type { Site } from '@/lib/types';
 
 const reportSchema = z.object({
   date: z.date({ required_error: "Se requiere una fecha para el reporte." }),
   newRevenue: z.coerce.number().min(0, "Los ingresos no pueden ser negativos."),
+  numberOfTransactions: z.coerce.number().min(0, "El número de transacciones no puede ser negativo.").int("Debe ser un número entero."),
   renewalRate: z.coerce.number().min(0).max(100, "La tasa de renovación debe estar entre 0 y 100."),
   dailyWin: z.string().min(3, "El logro del día debe tener al menos 3 caracteres.").max(500),
   dailyChallenge: z.string().min(3, "El desafío del día debe tener al menos 3 caracteres.").max(500),
@@ -43,6 +45,7 @@ export default function DailyReportPage() {
     defaultValues: {
       date: new Date(),
       newRevenue: 0,
+      numberOfTransactions: 0,
       renewalRate: 0,
       dailyWin: '',
       dailyChallenge: '',
@@ -89,21 +92,42 @@ export default function DailyReportPage() {
     setIsLoading(true);
 
     try {
-        // 1. Add new daily report to subcollection within the site
-        const reportCollectionRef = collection(db, "sites", user.siteId, "daily-reports");
-        await addDoc(reportCollectionRef, {
-            ...values,
-            date: format(values.date, 'yyyy-MM-dd'),
-            siteId: user.siteId,
-            leaderId: user.uid,
-            leaderName: user.name,
-            submittedAt: serverTimestamp(),
-        });
-
-        // 2. Update the site's total revenue
         const siteRef = doc(db, "sites", user.siteId);
-        await updateDoc(siteRef, {
-            revenue: increment(values.newRevenue)
+        
+        // Use a transaction to read and then write, ensuring data consistency
+        await runTransaction(db, async (transaction) => {
+            const siteDoc = await transaction.get(siteRef);
+            if (!siteDoc.exists()) {
+                throw new Error("El documento de la sede no existe.");
+            }
+
+            const currentData = siteDoc.data() as Site;
+            
+            // Calculate new totals
+            const newTotalRevenue = (currentData.revenue || 0) + values.newRevenue;
+            const newTotalTransactions = (currentData.totalTransactions || 0) + values.numberOfTransactions;
+
+            // Calculate new average ticket
+            const newAverageTicket = newTotalTransactions > 0 ? newTotalRevenue / newTotalTransactions : 0;
+            
+            // 1. Update the site's KPIs
+            transaction.update(siteRef, {
+                revenue: newTotalRevenue,
+                totalTransactions: newTotalTransactions,
+                averageTicket: newAverageTicket,
+            });
+
+            // 2. Add new daily report to subcollection within the site
+            const reportCollectionRef = collection(db, "sites", user.siteId, "daily-reports");
+            const newReportRef = doc(reportCollectionRef); // Create a new doc ref
+            transaction.set(newReportRef, {
+                ...values,
+                date: format(values.date, 'yyyy-MM-dd'),
+                siteId: user.siteId,
+                leaderId: user.uid,
+                leaderName: user.name,
+                submittedAt: serverTimestamp(),
+            });
         });
 
         toast({
@@ -171,9 +195,12 @@ export default function DailyReportPage() {
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <FormField control={form.control} name="newRevenue" render={({ field }) => (
                   <FormItem><FormLabel>Ventas del Día (COP)</FormLabel><FormControl><Input type="number" placeholder="1500000" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="numberOfTransactions" render={({ field }) => (
+                  <FormItem><FormLabel># Transacciones del Día</FormLabel><FormControl><Input type="number" placeholder="10" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="renewalRate" render={({ field }) => (
                   <FormItem><FormLabel>Tasa de Renovación (%)</FormLabel><FormControl><Input type="number" placeholder="85" {...field} /></FormControl><FormMessage /></FormItem>
