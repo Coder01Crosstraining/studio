@@ -39,7 +39,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
             }
         )}>
             <MobileHeader />
-            <main className="flex-1 p-4 sm:p-6 lg:p-8">
+            <main className="flex flex-1 p-4 sm:p-6 lg:p-8">
                 {children}
             </main>
         </div>
