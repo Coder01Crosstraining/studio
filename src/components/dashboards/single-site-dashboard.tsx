@@ -21,7 +21,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { TaskChecklistDialog } from '@/components/task-checklist-dialog';
+import { TaskChecklistDialog } from '@/app/(main)/tasks/components/task-checklist-dialog';
+import { useAuth } from '@/lib/auth';
 
 const chartConfig = {
   revenue: { label: 'Ingresos', color: 'hsl(var(--chart-1))' },
@@ -135,6 +136,7 @@ function PendingTasksCard({ summary, onOpenTasks }: { summary: Omit<PendingTasks
 }
 
 export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: UserRole }) {
+    const { user } = useAuth();
     const [kpiData, setKpiData] = useState<Site | null>(null);
     const [dailyData, setDailyData] = useState<DailyChartData[]| null>(null);
     const [isKpiLoading, setIsKpiLoading] = useState(true);
@@ -153,49 +155,51 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
         resolver: zodResolver(kpiSchema),
     });
 
-    // Fetch pending tasks summary for Site Leader
-    useEffect(() => {
+    const fetchTasks = React.useCallback(async () => {
         if (role !== 'SiteLeader' || !siteId) {
             setIsTasksLoading(false);
             return;
         };
+        setIsTasksLoading(true);
 
-        const fetchTasks = async () => {
-            try {
-                const now = new Date();
-                const templatesRef = collection(db, 'task-templates');
-                const templatesQuery = query(templatesRef, where('isActive', '==', true));
-                const templatesSnapshot = await getDocs(templatesQuery);
-                const allTemplates = templatesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TaskTemplate));
+        try {
+            const now = new Date();
+            const templatesRef = collection(db, 'task-templates');
+            const templatesQuery = query(templatesRef, where('isActive', '==', true));
+            const templatesSnapshot = await getDocs(templatesQuery);
+            const allTemplates = templatesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TaskTemplate));
 
-                const instancesRef = collection(db, 'sites', siteId, 'task-instances');
-                const dailyQuery = query(instancesRef, where('completedAt', '>=', startOfDay(now)), where('completedAt', '<=', endOfDay(now)));
-                const weeklyQuery = query(instancesRef, where('completedAt', '>=', startOfWeek(now)), where('completedAt', '<=', endOfWeek(now)));
-                const monthlyQuery = query(instancesRef, where('completedAt', '>=', startOfMonth(now)), where('completedAt', '<=', endOfMonth(now)));
-                
-                const [dailySnapshot, weeklySnapshot, monthlySnapshot] = await Promise.all([getDocs(dailyQuery), getDocs(weeklyQuery), getDocs(monthlyQuery)]);
+            const instancesRef = collection(db, 'sites', siteId, 'task-instances');
+            const dailyQuery = query(instancesRef, where('completedAt', '>=', startOfDay(now)), where('completedAt', '<=', endOfDay(now)));
+            const weeklyQuery = query(instancesRef, where('completedAt', '>=', startOfWeek(now)), where('completedAt', '<=', endOfWeek(now)));
+            const monthlyQuery = query(instancesRef, where('completedAt', '>=', startOfMonth(now)), where('completedAt', '<=', endOfMonth(now)));
+            
+            const [dailySnapshot, weeklySnapshot, monthlySnapshot] = await Promise.all([getDocs(dailyQuery), getDocs(weeklyQuery), getDocs(monthlyQuery)]);
 
-                const completedDailyIds = new Set(dailySnapshot.docs.map(doc => (doc.data() as TaskInstance).templateId));
-                const completedWeeklyIds = new Set(weeklySnapshot.docs.map(doc => (doc.data() as TaskInstance).templateId));
-                const completedMonthlyIds = new Set(monthlySnapshot.docs.map(doc => (doc.data() as TaskInstance).templateId));
+            const completedDailyIds = new Set(dailySnapshot.docs.map(doc => (doc.data() as TaskInstance).templateId));
+            const completedWeeklyIds = new Set(weeklySnapshot.docs.map(doc => (doc.data() as TaskInstance).templateId));
+            const completedMonthlyIds = new Set(monthlySnapshot.docs.map(doc => (doc.data() as TaskInstance).templateId));
 
-                const summary: PendingTasksSummary = { daily: [], weekly: [], monthly: [], total: 0 };
-                allTemplates.forEach(template => {
-                    if (template.frequency === 'daily' && !completedDailyIds.has(template.id)) summary.daily.push(template);
-                    else if (template.frequency === 'weekly' && !completedWeeklyIds.has(template.id)) summary.weekly.push(template);
-                    else if (template.frequency === 'monthly' && !completedMonthlyIds.has(template.id)) summary.monthly.push(template);
-                });
-                summary.total = summary.daily.length + summary.weekly.length + summary.monthly.length;
-                setPendingTasks(summary);
-            } catch (error) {
-                console.error("Error fetching tasks summary:", error);
-            } finally {
-                setIsTasksLoading(false);
-            }
-        };
-
+            const summary: PendingTasksSummary = { daily: [], weekly: [], monthly: [], total: 0 };
+            allTemplates.forEach(template => {
+                if (template.frequency === 'daily' && !completedDailyIds.has(template.id)) summary.daily.push(template);
+                else if (template.frequency === 'weekly' && !completedWeeklyIds.has(template.id)) summary.weekly.push(template);
+                else if (template.frequency === 'monthly' && !completedMonthlyIds.has(template.id)) summary.monthly.push(template);
+            });
+            summary.total = summary.daily.length + summary.weekly.length + summary.monthly.length;
+            setPendingTasks(summary);
+        } catch (error) {
+            console.error("Error fetching tasks summary:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'No se pudieron cargar las tareas pendientes.' });
+        } finally {
+            setIsTasksLoading(false);
+        }
+    }, [siteId, role, toast]);
+    
+    // Fetch pending tasks summary for Site Leader
+    useEffect(() => {
         fetchTasks();
-    }, [siteId, role]);
+    }, [fetchTasks]);
 
 
     const fetchAndCacheForecast = React.useCallback(async () => {
@@ -410,7 +414,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                 </Card>
                 </div>
             </div>
-            {pendingTasks && <TaskChecklistDialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen} tasks={pendingTasks} />}
+            {user && pendingTasks && <TaskChecklistDialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen} tasks={pendingTasks} siteId={user.siteId!} userId={user.uid} onTaskCompleted={fetchTasks} />}
         </TooltipProvider>
     );
 }

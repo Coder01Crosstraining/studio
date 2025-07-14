@@ -1,4 +1,3 @@
-// src/components/task-checklist-dialog.tsx
 "use client";
 
 import React from 'react';
@@ -8,12 +7,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2 } from 'lucide-react';
-import type { PendingTasksSummary } from './dashboards/single-site-dashboard';
-import type { TaskTemplate } from '@/lib/types';
+import type { PendingTasksSummary } from '@/components/dashboards/single-site-dashboard';
+import type { TaskTemplate, SiteId } from '@/lib/types';
+import { completeTaskAction } from '../actions';
 
 
-function TaskList({ title, tasks }: { title: string, tasks: TaskTemplate[] }) {
+function TaskList({ title, tasks, siteId, userId, onTaskCompleted }: { title: string; tasks: TaskTemplate[], siteId: SiteId; userId: string; onTaskCompleted: () => void; }) {
     const { toast } = useToast();
+    const [completingTaskId, setCompletingTaskId] = React.useState<string | null>(null);
     
     if (tasks.length === 0) {
         return (
@@ -22,6 +23,23 @@ function TaskList({ title, tasks }: { title: string, tasks: TaskTemplate[] }) {
                 <p className="mt-4">¡Excelente! No tienes tareas {title.toLowerCase()} pendientes.</p>
             </div>
         )
+    }
+
+    const handleCompleteTask = async (templateId: string) => {
+        setCompletingTaskId(templateId);
+        try {
+            const result = await completeTaskAction({ templateId, siteId, userId });
+            if (result.success) {
+                toast({ title: "Tarea Completada", description: "¡Buen trabajo!" });
+                onTaskCompleted(); // Refreshes the list
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: "Error", description: error.message || "No se pudo completar la tarea." });
+        } finally {
+            setCompletingTaskId(null);
+        }
     }
 
     return (
@@ -33,8 +51,13 @@ function TaskList({ title, tasks }: { title: string, tasks: TaskTemplate[] }) {
                             <p className="font-semibold">{task.title}</p>
                             <p className="text-sm text-muted-foreground">{task.description}</p>
                         </div>
-                        <Button size="sm" onClick={() => toast({ title: "Próximamente", description: "La función para completar tareas estará disponible pronto." })}>
-                            Completar
+                        <Button 
+                            size="sm" 
+                            onClick={() => handleCompleteTask(task.id)}
+                            disabled={completingTaskId === task.id}
+                        >
+                           {completingTaskId === task.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                           Completar
                         </Button>
                     </CardContent>
                 </Card>
@@ -47,9 +70,12 @@ interface TaskChecklistDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tasks: PendingTasksSummary | null;
+  siteId: SiteId;
+  userId: string;
+  onTaskCompleted: () => void;
 }
 
-export function TaskChecklistDialog({ open, onOpenChange, tasks }: TaskChecklistDialogProps) {
+export function TaskChecklistDialog({ open, onOpenChange, tasks, siteId, userId, onTaskCompleted }: TaskChecklistDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
@@ -72,13 +98,13 @@ export function TaskChecklistDialog({ open, onOpenChange, tasks }: TaskChecklist
               <TabsTrigger value="monthly">Mensuales ({tasks.monthly.length || 0})</TabsTrigger>
             </TabsList>
             <TabsContent value="daily" className="mt-4">
-              <TaskList title="Diarias" tasks={tasks.daily || []} />
+              <TaskList title="Diarias" tasks={tasks.daily || []} siteId={siteId} userId={userId} onTaskCompleted={onTaskCompleted} />
             </TabsContent>
             <TabsContent value="weekly" className="mt-4">
-              <TaskList title="Semanales" tasks={tasks.weekly || []} />
+              <TaskList title="Semanales" tasks={tasks.weekly || []} siteId={siteId} userId={userId} onTaskCompleted={onTaskCompleted} />
             </TabsContent>
             <TabsContent value="monthly" className="mt-4">
-              <TaskList title="Mensuales" tasks={tasks.monthly || []} />
+              <TaskList title="Mensuales" tasks={tasks.monthly || []} siteId={siteId} userId={userId} onTaskCompleted={onTaskCompleted} />
             </TabsContent>
           </Tabs>
         )}
