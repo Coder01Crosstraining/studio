@@ -4,19 +4,20 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Line, LineChart, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import type { Site, SiteId, DailyReport, UserRole } from '@/lib/types';
+import type { Site, SiteId, DailyReport, UserRole, TaskTemplate, TaskInstance } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
 import { updateNpsForSiteIfStale } from '@/services/google-sheets';
-import { Info, Loader2, Pencil, RefreshCw } from 'lucide-react';
+import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { format, getDay, getDate, getDaysInMonth } from 'date-fns';
+import { format, getDay, getDate, getDaysInMonth, startOfDay, startOfMonth, startOfWeek, endOfDay, endOfWeek, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot, doc, getDocs, limit, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, getDocs, limit, orderBy, updateDoc, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -85,8 +86,57 @@ function calculateMonthProgress(today: Date) {
   };
 }
 
-
 type DailyChartData = { date: string; revenue: number; goal: number };
+
+type PendingTasksSummary = {
+    daily: number;
+    weekly: number;
+    monthly: number;
+    total: number;
+};
+
+function PendingTasksCard({ summary }: { summary: PendingTasksSummary | null }) {
+    if (!summary) {
+        return (
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Tareas Pendientes</CardTitle>
+                    <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-center pt-4">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+    
+    return (
+        <Card className="flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Tareas Pendientes</CardTitle>
+                <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col justify-between">
+                <div>
+                    {summary.total > 0 ? (
+                        <div className="text-2xl font-bold flex items-center gap-2">{summary.total} <span className="text-sm text-destructive font-medium flex items-center gap-1"><AlertCircle className="h-4 w-4" /> Pendientes</span></div>
+                    ) : (
+                        <div className="text-2xl font-bold">¡Al día!</div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                        {summary.daily} diarias, {summary.weekly} semanales, {summary.monthly} mensuales.
+                    </p>
+                </div>
+                 <Button asChild className="mt-4 w-full">
+                    <Link href="/tasks">Ver Tareas</Link>
+                </Button>
+            </CardContent>
+        </Card>
+    );
+}
+
 
 export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: UserRole }) {
     const [kpiData, setKpiData] = useState<Site | null>(null);
@@ -95,6 +145,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
     const [forecast, setForecast] = useState<GenerateSalesForecastOutput | null>(null);
     const [isForecastLoading, setIsForecastLoading] = useState(true);
     const [isRecalculating, setIsRecalculating] = useState(false);
+    const [pendingTasks, setPendingTasks] = useState<PendingTasksSummary | null>(null);
     const { toast } = useToast();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,6 +153,46 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
     const kpiForm = useForm<z.infer<typeof kpiSchema>>({
         resolver: zodResolver(kpiSchema),
     });
+
+    // Fetch pending tasks summary for Site Leader
+    useEffect(() => {
+        if (role !== 'SiteLeader' || !siteId) return;
+
+        const fetchTasks = async () => {
+            try {
+                const now = new Date();
+                const templatesRef = collection(db, 'task-templates');
+                const templatesQuery = query(templatesRef, where('isActive', '==', true));
+                const templatesSnapshot = await getDocs(templatesQuery);
+                const allTemplates = templatesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TaskTemplate));
+
+                const instancesRef = collection(db, 'sites', siteId, 'task-instances');
+                const dailyQuery = query(instancesRef, where('completedAt', '>=', startOfDay(now)), where('completedAt', '<=', endOfDay(now)));
+                const weeklyQuery = query(instancesRef, where('completedAt', '>=', startOfWeek(now)), where('completedAt', '<=', endOfWeek(now)));
+                const monthlyQuery = query(instancesRef, where('completedAt', '>=', startOfMonth(now)), where('completedAt', '<=', endOfMonth(now)));
+                
+                const [dailySnapshot, weeklySnapshot, monthlySnapshot] = await Promise.all([getDocs(dailyQuery), getDocs(weeklyQuery), getDocs(monthlyQuery)]);
+
+                const completedDailyIds = new Set(dailySnapshot.docs.map(doc => (doc.data() as TaskInstance).templateId));
+                const completedWeeklyIds = new Set(weeklySnapshot.docs.map(doc => (doc.data() as TaskInstance).templateId));
+                const completedMonthlyIds = new Set(monthlySnapshot.docs.map(doc => (doc.data() as TaskInstance).templateId));
+
+                const summary: PendingTasksSummary = { daily: 0, weekly: 0, monthly: 0, total: 0 };
+                allTemplates.forEach(template => {
+                    if (template.frequency === 'daily' && !completedDailyIds.has(template.id)) summary.daily++;
+                    else if (template.frequency === 'weekly' && !completedWeeklyIds.has(template.id)) summary.weekly++;
+                    else if (template.frequency === 'monthly' && !completedMonthlyIds.has(template.id)) summary.monthly++;
+                });
+                summary.total = summary.daily + summary.weekly + summary.monthly;
+                setPendingTasks(summary);
+            } catch (error) {
+                console.error("Error fetching tasks summary:", error);
+            }
+        };
+
+        fetchTasks();
+    }, [siteId, role]);
+
 
     const fetchAndCacheForecast = React.useCallback(async () => {
         if (!kpiData) return;
@@ -238,66 +329,67 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
     return (
         <TooltipProvider>
         <div className="space-y-4">
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Ventas a la Fecha</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.revenue)}</div></CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Meta del Mes</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.monthlyGoal)}</div></CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Pronóstico Ventas (Mes)</CardTitle>
-                    <div className="flex items-center gap-1">
-                        {forecast && (
-                            <UITooltip><UITooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-pointer" /></UITooltipTrigger><UITooltipContent><p className="max-w-xs">{forecast.reasoning}</p></UITooltipContent></UITooltip>
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Ventas a la Fecha</CardTitle></CardHeader>
+                    <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.revenue)}</div></CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Meta del Mes</CardTitle></CardHeader>
+                    <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.monthlyGoal)}</div></CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Pronóstico Ventas (Mes)</CardTitle>
+                        <div className="flex items-center gap-1">
+                            {forecast && (
+                                <UITooltip><UITooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-pointer" /></UITooltipTrigger><UITooltipContent><p className="max-w-xs">{forecast.reasoning}</p></UITooltipContent></UITooltip>
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => fetchAndCacheForecast()} disabled={isRecalculating}>
+                                {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                <span className="sr-only">Recalcular Pronóstico</span>
+                            </Button>
+                            {role === 'CEO' && (
+                                <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader><DialogTitle>Editar KPIs para {kpiData.name}</DialogTitle><DialogDescription>Ajusta las ventas a la fecha y la meta mensual para esta sede.</DialogDescription></DialogHeader>
+                                        <Form {...kpiForm}>
+                                        <form onSubmit={kpiForm.handleSubmit(handleKpiSubmit)} className="space-y-4 py-4">
+                                            <FormField control={kpiForm.control} name="revenue" render={({ field }) => ( <FormItem><FormLabel>Ventas a la Fecha (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={kpiForm.control} name="monthlyGoal" render={({ field }) => ( <FormItem><FormLabel>Nueva Meta Mensual (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <DialogFooter>
+                                                <Button type="submit" disabled={isSubmitting}>
+                                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                    Guardar Cambios
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                        </Form>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {isForecastLoading && !forecast ? (
+                            <div className="flex items-center gap-2 pt-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Calculando...</span></div>
+                        ) : (
+                            <div className="text-2xl font-bold">{formatCurrency(forecast?.forecast || 0)}</div>
                         )}
-                         <Button variant="ghost" size="icon" onClick={() => fetchAndCacheForecast()} disabled={isRecalculating}>
-                            {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                            <span className="sr-only">Recalcular Pronóstico</span>
-                        </Button>
-                        {role === 'CEO' && (
-                            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                                <DialogTrigger asChild>
-                                    <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-[425px]">
-                                    <DialogHeader><DialogTitle>Editar KPIs para {kpiData.name}</DialogTitle><DialogDescription>Ajusta las ventas a la fecha y la meta mensual para esta sede.</DialogDescription></DialogHeader>
-                                    <Form {...kpiForm}>
-                                    <form onSubmit={kpiForm.handleSubmit(handleKpiSubmit)} className="space-y-4 py-4">
-                                        <FormField control={kpiForm.control} name="revenue" render={({ field }) => ( <FormItem><FormLabel>Ventas a la Fecha (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                        <FormField control={kpiForm.control} name="monthlyGoal" render={({ field }) => ( <FormItem><FormLabel>Nueva Meta Mensual (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                        <DialogFooter>
-                                            <Button type="submit" disabled={isSubmitting}>
-                                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                Guardar Cambios
-                                            </Button>
-                                        </DialogFooter>
-                                    </form>
-                                    </Form>
-                                </DialogContent>
-                            </Dialog>
-                        )}
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {isForecastLoading && !forecast ? (
-                        <div className="flex items-center gap-2 pt-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Calculando...</span></div>
-                    ) : (
-                        <div className="text-2xl font-bold">{formatCurrency(forecast?.forecast || 0)}</div>
-                    )}
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Tasa de Retención (Mes)</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{kpiData.retention.toFixed(1)}%</div></CardContent>
-            </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS (Mes Actual)</CardTitle></CardHeader>
-                <CardContent><div className="text-2xl font-bold">{kpiData.nps.toFixed(2)}</div></CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Tasa de Retención (Mes)</CardTitle></CardHeader>
+                    <CardContent><div className="text-2xl font-bold">{kpiData.retention.toFixed(1)}%</div></CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS (Mes Actual)</CardTitle></CardHeader>
+                    <CardContent><div className="text-2xl font-bold">{kpiData.nps.toFixed(2)}</div></CardContent>
+                </Card>
+                {role === 'SiteLeader' && <PendingTasksCard summary={pendingTasks} />}
             </div>
             <div className="grid grid-cols-1 gap-4">
             <Card>
