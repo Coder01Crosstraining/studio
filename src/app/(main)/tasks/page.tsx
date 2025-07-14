@@ -116,7 +116,14 @@ export default function TasksPage() {
   }
   
   if (role !== 'SiteLeader') {
-      return <p>Acceso no autorizado.</p>
+      return (
+        <div className="w-full space-y-4">
+           <h2 className="text-3xl font-bold tracking-tight">Acceso Denegado</h2>
+            <p className="text-muted-foreground">
+              Esta sección solo está disponible para Líderes de Sede.
+            </p>
+        </div>
+      );
   }
 
   return (
