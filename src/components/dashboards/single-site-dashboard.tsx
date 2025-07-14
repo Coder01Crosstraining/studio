@@ -119,6 +119,7 @@ function PendingTasksCard({ summary, onOpenTasks }: { summary: PendingTasksSumma
     if (summary.monthly.length > 0) pendingTextParts.push(`${summary.monthly.length} mensual(es)`);
     
     const isCompleted = summary.total === 0;
+    const isUrgent = summary.daily.length > 0 && summary.weekly.length > 0 && summary.monthly.length > 0;
 
     return (
         <Card className="flex flex-col">
@@ -127,7 +128,10 @@ function PendingTasksCard({ summary, onOpenTasks }: { summary: PendingTasksSumma
                  {isCompleted ? (
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
                 ) : (
-                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                    <AlertCircle className={cn(
+                        "h-4 w-4",
+                        isUrgent ? "text-red-500" : "text-yellow-500"
+                    )} />
                 )}
             </CardHeader>
             <CardContent className="flex-1 flex flex-col justify-between">
@@ -136,7 +140,10 @@ function PendingTasksCard({ summary, onOpenTasks }: { summary: PendingTasksSumma
                      {isCompleted ? (
                         <p className="text-xs text-green-500 font-medium">¡Todas las tareas al día!</p>
                      ) : (
-                        <p className="text-xs text-muted-foreground">
+                        <p className={cn(
+                          "text-xs",
+                          isUrgent ? "text-red-500 font-medium" : "text-muted-foreground"
+                        )}>
                             {pendingTextParts.join(', ')} pendiente(s).
                         </p>
                      )}
