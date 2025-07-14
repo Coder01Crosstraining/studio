@@ -81,3 +81,28 @@ export interface MonthlyHistory {
   finalNps: number;
   monthlyGoal: number;
 }
+
+export type TaskFrequency = 'daily' | 'weekly' | 'monthly';
+
+export interface TaskTemplate {
+    id: string;
+    title: string;
+    description: string;
+    frequency: TaskFrequency;
+    // assignedSiteIds: SiteId[] | 'all'; // For future use
+    createdBy: string; // User.uid
+    createdAt: Timestamp;
+    isActive: boolean;
+}
+
+export interface TaskInstance {
+    id: string;
+    templateId: string;
+    siteId: SiteId;
+    dueDate: Timestamp;
+    status: 'pending' | 'completed' | 'overdue';
+    completedAt?: Timestamp;
+    completedBy?: string; // User.uid
+    notes?: string;
+    evidenceUrl?: string;
+}
