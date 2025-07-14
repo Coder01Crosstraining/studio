@@ -14,7 +14,6 @@ import {
   UserCog,
   Archive,
   LayoutGrid,
-  ClipboardCheck,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
@@ -52,12 +51,6 @@ const navItems = [
     href: "/weekly-report",
     icon: FileText,
     label: "Reporte Diario",
-    roles: ["SiteLeader"],
-  },
-  {
-    href: "/tasks",
-    icon: ClipboardCheck,
-    label: "Tareas Pendientes",
     roles: ["SiteLeader"],
   },
   {

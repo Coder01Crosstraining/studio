@@ -4,9 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import Link from 'next/link';
-
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Line, LineChart, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Site, SiteId, DailyReport, UserRole, TaskTemplate, TaskInstance } from '@/lib/types';
@@ -23,6 +20,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { TaskChecklistDialog } from '@/components/task-checklist-dialog';
 
 const chartConfig = {
   revenue: { label: 'Ingresos', color: 'hsl(var(--chart-1))' },
@@ -88,14 +87,14 @@ function calculateMonthProgress(today: Date) {
 
 type DailyChartData = { date: string; revenue: number; goal: number };
 
-type PendingTasksSummary = {
-    daily: number;
-    weekly: number;
-    monthly: number;
+export type PendingTasksSummary = {
+    daily: TaskTemplate[];
+    weekly: TaskTemplate[];
+    monthly: TaskTemplate[];
     total: number;
 };
 
-function PendingTasksCard({ summary }: { summary: PendingTasksSummary | null }) {
+function PendingTasksCard({ summary, onOpenTasks }: { summary: Omit<PendingTasksSummary, 'daily' | 'weekly' | 'monthly'> | null, onOpenTasks: () => void }) {
     if (!summary) {
         return (
             <Card>
@@ -126,17 +125,14 @@ function PendingTasksCard({ summary }: { summary: PendingTasksSummary | null }) 
                         <div className="text-2xl font-bold">¡Al día!</div>
                     )}
                     <p className="text-xs text-muted-foreground">
-                        {summary.daily} diarias, {summary.weekly} semanales, {summary.monthly} mensuales.
+                        Tareas diarias, semanales y mensuales.
                     </p>
                 </div>
-                 <Button asChild className="mt-4 w-full">
-                    <Link href="/tasks">Ver Tareas</Link>
-                </Button>
+                 <Button onClick={onOpenTasks} className="mt-4 w-full">Ver Tareas</Button>
             </CardContent>
         </Card>
     );
 }
-
 
 export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: UserRole }) {
     const [kpiData, setKpiData] = useState<Site | null>(null);
@@ -146,6 +142,9 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
     const [isForecastLoading, setIsForecastLoading] = useState(true);
     const [isRecalculating, setIsRecalculating] = useState(false);
     const [pendingTasks, setPendingTasks] = useState<PendingTasksSummary | null>(null);
+    const [isTasksLoading, setIsTasksLoading] = useState(true);
+    const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+
     const { toast } = useToast();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -156,7 +155,10 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
 
     // Fetch pending tasks summary for Site Leader
     useEffect(() => {
-        if (role !== 'SiteLeader' || !siteId) return;
+        if (role !== 'SiteLeader' || !siteId) {
+            setIsTasksLoading(false);
+            return;
+        };
 
         const fetchTasks = async () => {
             try {
@@ -177,16 +179,18 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                 const completedWeeklyIds = new Set(weeklySnapshot.docs.map(doc => (doc.data() as TaskInstance).templateId));
                 const completedMonthlyIds = new Set(monthlySnapshot.docs.map(doc => (doc.data() as TaskInstance).templateId));
 
-                const summary: PendingTasksSummary = { daily: 0, weekly: 0, monthly: 0, total: 0 };
+                const summary: PendingTasksSummary = { daily: [], weekly: [], monthly: [], total: 0 };
                 allTemplates.forEach(template => {
-                    if (template.frequency === 'daily' && !completedDailyIds.has(template.id)) summary.daily++;
-                    else if (template.frequency === 'weekly' && !completedWeeklyIds.has(template.id)) summary.weekly++;
-                    else if (template.frequency === 'monthly' && !completedMonthlyIds.has(template.id)) summary.monthly++;
+                    if (template.frequency === 'daily' && !completedDailyIds.has(template.id)) summary.daily.push(template);
+                    else if (template.frequency === 'weekly' && !completedWeeklyIds.has(template.id)) summary.weekly.push(template);
+                    else if (template.frequency === 'monthly' && !completedMonthlyIds.has(template.id)) summary.monthly.push(template);
                 });
-                summary.total = summary.daily + summary.weekly + summary.monthly;
+                summary.total = summary.daily.length + summary.weekly.length + summary.monthly.length;
                 setPendingTasks(summary);
             } catch (error) {
                 console.error("Error fetching tasks summary:", error);
+            } finally {
+                setIsTasksLoading(false);
             }
         };
 
@@ -328,84 +332,85 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
 
     return (
         <TooltipProvider>
-        <div className="space-y-4">
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Ventas a la Fecha</CardTitle></CardHeader>
-                    <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.revenue)}</div></CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Meta del Mes</CardTitle></CardHeader>
-                    <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.monthlyGoal)}</div></CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Pronóstico Ventas (Mes)</CardTitle>
-                        <div className="flex items-center gap-1">
-                            {forecast && (
-                                <UITooltip><UITooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-pointer" /></UITooltipTrigger><UITooltipContent><p className="max-w-xs">{forecast.reasoning}</p></UITooltipContent></UITooltip>
+            <div className="space-y-4">
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Ventas a la Fecha</CardTitle></CardHeader>
+                        <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.revenue)}</div></CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Meta del Mes</CardTitle></CardHeader>
+                        <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.monthlyGoal)}</div></CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Pronóstico Ventas (Mes)</CardTitle>
+                            <div className="flex items-center gap-1">
+                                {forecast && (
+                                    <UITooltip><UITooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-pointer" /></UITooltipTrigger><UITooltipContent><p className="max-w-xs">{forecast.reasoning}</p></UITooltipContent></UITooltip>
+                                )}
+                                <Button variant="ghost" size="icon" onClick={() => fetchAndCacheForecast()} disabled={isRecalculating}>
+                                    {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                    <span className="sr-only">Recalcular Pronóstico</span>
+                                </Button>
+                                {role === 'CEO' && (
+                                    <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-[425px]">
+                                            <DialogHeader><DialogTitle>Editar KPIs para {kpiData.name}</DialogTitle><DialogDescription>Ajusta las ventas a la fecha y la meta mensual para esta sede.</DialogDescription></DialogHeader>
+                                            <Form {...kpiForm}>
+                                            <form onSubmit={kpiForm.handleSubmit(handleKpiSubmit)} className="space-y-4 py-4">
+                                                <FormField control={kpiForm.control} name="revenue" render={({ field }) => ( <FormItem><FormLabel>Ventas a la Fecha (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                <FormField control={kpiForm.control} name="monthlyGoal" render={({ field }) => ( <FormItem><FormLabel>Nueva Meta Mensual (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                                <DialogFooter>
+                                                    <Button type="submit" disabled={isSubmitting}>
+                                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                        Guardar Cambios
+                                                    </Button>
+                                                </DialogFooter>
+                                            </form>
+                                            </Form>
+                                        </DialogContent>
+                                    </Dialog>
+                                )}
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {isForecastLoading && !forecast ? (
+                                <div className="flex items-center gap-2 pt-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Calculando...</span></div>
+                            ) : (
+                                <div className="text-2xl font-bold">{formatCurrency(forecast?.forecast || 0)}</div>
                             )}
-                            <Button variant="ghost" size="icon" onClick={() => fetchAndCacheForecast()} disabled={isRecalculating}>
-                                {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                                <span className="sr-only">Recalcular Pronóstico</span>
-                            </Button>
-                            {role === 'CEO' && (
-                                <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button variant="ghost" size="icon"><Pencil className="h-4 w-4" /></Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[425px]">
-                                        <DialogHeader><DialogTitle>Editar KPIs para {kpiData.name}</DialogTitle><DialogDescription>Ajusta las ventas a la fecha y la meta mensual para esta sede.</DialogDescription></DialogHeader>
-                                        <Form {...kpiForm}>
-                                        <form onSubmit={kpiForm.handleSubmit(handleKpiSubmit)} className="space-y-4 py-4">
-                                            <FormField control={kpiForm.control} name="revenue" render={({ field }) => ( <FormItem><FormLabel>Ventas a la Fecha (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            <FormField control={kpiForm.control} name="monthlyGoal" render={({ field }) => ( <FormItem><FormLabel>Nueva Meta Mensual (COP)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                            <DialogFooter>
-                                                <Button type="submit" disabled={isSubmitting}>
-                                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                    Guardar Cambios
-                                                </Button>
-                                            </DialogFooter>
-                                        </form>
-                                        </Form>
-                                    </DialogContent>
-                                </Dialog>
-                            )}
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        {isForecastLoading && !forecast ? (
-                            <div className="flex items-center gap-2 pt-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Calculando...</span></div>
-                        ) : (
-                            <div className="text-2xl font-bold">{formatCurrency(forecast?.forecast || 0)}</div>
-                        )}
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Tasa de Retención (Mes)</CardTitle></CardHeader>
+                        <CardContent><div className="text-2xl font-bold">{kpiData.retention.toFixed(1)}%</div></CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS (Mes Actual)</CardTitle></CardHeader>
+                        <CardContent><div className="text-2xl font-bold">{kpiData.nps.toFixed(2)}</div></CardContent>
+                    </Card>
+                    {role === 'SiteLeader' && <PendingTasksCard summary={isTasksLoading || !pendingTasks ? null : { total: pendingTasks.total }} onOpenTasks={() => setIsTaskDialogOpen(true)} />}
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                <Card>
+                    <CardHeader><CardTitle>Ventas Diarias vs. Meta (Últimos 14 Días)</CardTitle></CardHeader>
+                    <CardContent className="pl-2">
+                    <ChartContainer config={chartConfig} className="h-[350px] w-full">
+                        <LineChart data={dailyData || []}>
+                        <CartesianGrid vertical={false} /><XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} /><YAxis tickFormatter={(value) => `$${value / 1000}k`} />
+                        <Tooltip content={<ChartTooltipContent formatter={(value, name) => [formatCurrency(value as number), name === 'revenue' ? 'Ingresos' : 'Meta']} />} />
+                        <Line type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} dot={true} /><Line type="monotone" dataKey="goal" stroke="var(--color-goal)" strokeDasharray="5 5" />
+                        </LineChart>
+                    </ChartContainer>
                     </CardContent>
                 </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Tasa de Retención (Mes)</CardTitle></CardHeader>
-                    <CardContent><div className="text-2xl font-bold">{kpiData.retention.toFixed(1)}%</div></CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS (Mes Actual)</CardTitle></CardHeader>
-                    <CardContent><div className="text-2xl font-bold">{kpiData.nps.toFixed(2)}</div></CardContent>
-                </Card>
-                {role === 'SiteLeader' && <PendingTasksCard summary={pendingTasks} />}
+                </div>
             </div>
-            <div className="grid grid-cols-1 gap-4">
-            <Card>
-                <CardHeader><CardTitle>Ventas Diarias vs. Meta (Últimos 14 Días)</CardTitle></CardHeader>
-                <CardContent className="pl-2">
-                <ChartContainer config={chartConfig} className="h-[350px] w-full">
-                    <LineChart data={dailyData || []}>
-                    <CartesianGrid vertical={false} /><XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} /><YAxis tickFormatter={(value) => `$${value / 1000}k`} />
-                    <Tooltip content={<ChartTooltipContent formatter={(value, name) => [formatCurrency(value as number), name === 'revenue' ? 'Ingresos' : 'Meta']} />} />
-                    <Line type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} dot={true} /><Line type="monotone" dataKey="goal" stroke="var(--color-goal)" strokeDasharray="5 5" />
-                    </LineChart>
-                </ChartContainer>
-                </CardContent>
-            </Card>
-            </div>
-        </div>
+            {pendingTasks && <TaskChecklistDialog open={isTaskDialogOpen} onOpenChange={setIsTaskDialogOpen} tasks={pendingTasks} />}
         </TooltipProvider>
     );
 }
