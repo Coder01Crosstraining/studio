@@ -9,7 +9,7 @@ import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Site, SiteId, DailyReport, UserRole, TaskTemplate, TaskInstance } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
 import { updateNpsForSiteIfStale } from '@/services/google-sheets';
-import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle } from 'lucide-react';
+import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { format, getDay, getDate, getDaysInMonth, startOfDay, startOfMonth, startOfWeek, endOfDay, endOfWeek, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { TaskChecklistDialog } from '@/app/(main)/tasks/components/task-checklist-dialog';
 import { useAuth } from '@/lib/auth';
+import { cn } from '@/lib/utils';
 
 const chartConfig = {
   revenue: { label: 'Ingresos', color: 'hsl(var(--chart-1))' },
@@ -95,7 +96,7 @@ export type PendingTasksSummary = {
     total: number;
 };
 
-function PendingTasksCard({ summary, onOpenTasks }: { summary: Omit<PendingTasksSummary, 'daily' | 'weekly' | 'monthly'> | null, onOpenTasks: () => void }) {
+function PendingTasksCard({ summary, onOpenTasks }: { summary: PendingTasksSummary | null, onOpenTasks: () => void }) {
     if (!summary) {
         return (
             <Card>
@@ -111,25 +112,36 @@ function PendingTasksCard({ summary, onOpenTasks }: { summary: Omit<PendingTasks
             </Card>
         );
     }
+
+    const pendingTextParts = [];
+    if (summary.daily.length > 0) pendingTextParts.push(`${summary.daily.length} diaria(s)`);
+    if (summary.weekly.length > 0) pendingTextParts.push(`${summary.weekly.length} semanal(es)`);
+    if (summary.monthly.length > 0) pendingTextParts.push(`${summary.monthly.length} mensual(es)`);
     
+    const isCompleted = summary.total === 0;
+
     return (
         <Card className="flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Tareas Pendientes</CardTitle>
-                <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                 {isCompleted ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                ) : (
+                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                )}
             </CardHeader>
             <CardContent className="flex-1 flex flex-col justify-between">
                 <div>
-                    {summary.total > 0 ? (
-                        <div className="text-2xl font-bold flex items-center gap-2">{summary.total} <span className="text-sm text-destructive font-medium flex items-center gap-1"><AlertCircle className="h-4 w-4" /> Pendientes</span></div>
-                    ) : (
-                        <div className="text-2xl font-bold">¡Al día!</div>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                        Tareas diarias, semanales y mensuales.
-                    </p>
+                     <div className="text-2xl font-bold">{summary.total}</div>
+                     {isCompleted ? (
+                        <p className="text-xs text-green-500 font-medium">¡Todas las tareas al día!</p>
+                     ) : (
+                        <p className="text-xs text-muted-foreground">
+                            {pendingTextParts.join(', ')} pendiente(s).
+                        </p>
+                     )}
                 </div>
-                 <Button onClick={onOpenTasks} className="mt-4 w-full">Ver Tareas</Button>
+                 <Button onClick={onOpenTasks} className="mt-4 w-full">Ver Agenda</Button>
             </CardContent>
         </Card>
     );
@@ -171,7 +183,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
 
             const instancesRef = collection(db, 'sites', siteId, 'task-instances');
             const dailyQuery = query(instancesRef, where('completedAt', '>=', startOfDay(now)), where('completedAt', '<=', endOfDay(now)));
-            const weeklyQuery = query(instancesRef, where('completedAt', '>=', startOfWeek(now)), where('completedAt', '<=', endOfWeek(now)));
+            const weeklyQuery = query(instancesRef, where('completedAt', '>=', startOfWeek(now, { weekStartsOn: 1 })), where('completedAt', '<=', endOfWeek(now, { weekStartsOn: 1 })));
             const monthlyQuery = query(instancesRef, where('completedAt', '>=', startOfMonth(now)), where('completedAt', '<=', endOfMonth(now)));
             
             const [dailySnapshot, weeklySnapshot, monthlySnapshot] = await Promise.all([getDocs(dailyQuery), getDocs(weeklyQuery), getDocs(monthlyQuery)]);
@@ -397,7 +409,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS (Mes Actual)</CardTitle></CardHeader>
                         <CardContent><div className="text-2xl font-bold">{kpiData.nps.toFixed(2)}</div></CardContent>
                     </Card>
-                    {role === 'SiteLeader' && <PendingTasksCard summary={isTasksLoading || !pendingTasks ? null : { total: pendingTasks.total }} onOpenTasks={() => setIsTaskDialogOpen(true)} />}
+                    {role === 'SiteLeader' && <PendingTasksCard summary={isTasksLoading ? null : pendingTasks} onOpenTasks={() => setIsTaskDialogOpen(true)} />}
                 </div>
                 <div className="grid grid-cols-1 gap-4">
                 <Card>
