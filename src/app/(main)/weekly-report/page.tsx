@@ -100,7 +100,7 @@ export default function DailyReportPage() {
 
             const currentData = siteDoc.data() as Site;
             
-            const newTotalRevenue = (currentData.revenue || 0) + values.newRevenue;
+            const newTotalRevenue = Number(currentData.revenue || 0) + Number(values.newRevenue);
             
             transaction.update(siteRef, {
                 revenue: newTotalRevenue,
