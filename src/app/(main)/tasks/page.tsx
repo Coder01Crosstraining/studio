@@ -184,25 +184,28 @@ function TaskDashboard({ sites, allTemplates, loading }: { sites: Site[], allTem
         const calculateStatus = async () => {
             setIsCalculating(true);
             const now = new Date();
-            const dailyTemplates = allTemplates.filter(t => t.frequency === 'daily');
-            const weeklyTemplates = allTemplates.filter(t => t.frequency === 'weekly');
-            const monthlyTemplates = allTemplates.filter(t => t.frequency === 'monthly');
+            const dailyTemplateIds = new Set(allTemplates.filter(t => t.frequency === 'daily').map(t => t.id));
+            const weeklyTemplateIds = new Set(allTemplates.filter(t => t.frequency === 'weekly').map(t => t.id));
+            const monthlyTemplateIds = new Set(allTemplates.filter(t => t.frequency === 'monthly').map(t => t.id));
 
             const statusPromises = sites.map(async (site) => {
                 const instancesRef = collection(db, 'sites', site.id, 'task-instances');
-                const dailyQuery = query(instancesRef, where('completedAt', '>=', startOfDay(now)), where('templateId', 'in', dailyTemplates.map(t => t.id).length > 0 ? dailyTemplates.map(t => t.id) : ['dummy']));
-                const weeklyQuery = query(instancesRef, where('completedAt', '>=', startOfWeek(now, { weekStartsOn: 1 })), where('templateId', 'in', weeklyTemplates.map(t => t.id).length > 0 ? weeklyTemplates.map(t => t.id) : ['dummy']));
-                const monthlyQuery = query(instancesRef, where('completedAt', '>=', startOfMonth(now)), where('templateId', 'in', monthlyTemplates.map(t => t.id).length > 0 ? monthlyTemplates.map(t => t.id) : ['dummy']));
+                
+                // Fetch completed tasks for each period
+                const dailyQuery = query(instancesRef, where('completedAt', '>=', startOfDay(now)));
+                const weeklyQuery = query(instancesRef, where('completedAt', '>=', startOfWeek(now, { weekStartsOn: 1 })));
+                const monthlyQuery = query(instancesRef, where('completedAt', '>=', startOfMonth(now)));
 
                 const [dailySnapshot, weeklySnapshot, monthlySnapshot] = await Promise.all([getDocs(dailyQuery), getDocs(weeklyQuery), getDocs(monthlyQuery)]);
 
-                const completedDaily = dailySnapshot.size;
-                const completedWeekly = weeklySnapshot.size;
-                const completedMonthly = monthlySnapshot.size;
+                // Filter in code
+                const completedDaily = dailySnapshot.docs.filter(doc => dailyTemplateIds.has(doc.data().templateId)).length;
+                const completedWeekly = weeklySnapshot.docs.filter(doc => weeklyTemplateIds.has(doc.data().templateId)).length;
+                const completedMonthly = monthlySnapshot.docs.filter(doc => monthlyTemplateIds.has(doc.data().templateId)).length;
 
-                const pendingDaily = dailyTemplates.length - completedDaily;
-                const pendingWeekly = weeklyTemplates.length - completedWeekly;
-                const pendingMonthly = monthlyTemplates.length - completedMonthly;
+                const pendingDaily = dailyTemplateIds.size - completedDaily;
+                const pendingWeekly = weeklyTemplateIds.size - completedWeekly;
+                const pendingMonthly = monthlyTemplateIds.size - completedMonthly;
 
                 return {
                     siteId: site.id,
