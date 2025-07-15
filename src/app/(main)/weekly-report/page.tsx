@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -92,10 +93,6 @@ export default function DailyReportPage() {
     try {
         const siteRef = doc(db, "sites", user.siteId);
         
-        // The validated and coerced 'values' object from react-hook-form is used here.
-        // `values.newRevenue` and `values.renewalRate` are guaranteed to be numbers
-        // because of `z.coerce.number()` in the schema.
-        
         await runTransaction(db, async (transaction) => {
             const siteDoc = await transaction.get(siteRef);
             if (!siteDoc.exists()) {
@@ -104,8 +101,8 @@ export default function DailyReportPage() {
 
             const currentData = siteDoc.data() as Site;
             
-            // This calculation is now safe because `values.newRevenue` is a number.
-            const newTotalRevenue = (currentData.revenue || 0) + values.newRevenue;
+            // FIX: Explicitly cast both operands to Number to ensure mathematical addition
+            const newTotalRevenue = Number(currentData.revenue || 0) + Number(values.newRevenue);
             
             transaction.update(siteRef, {
                 revenue: newTotalRevenue,
@@ -115,7 +112,7 @@ export default function DailyReportPage() {
             const newReportRef = doc(reportCollectionRef);
             
             transaction.set(newReportRef, {
-                ...values, // The entire validated 'values' object is used
+                ...values,
                 date: format(values.date, 'yyyy-MM-dd'),
                 siteId: user.siteId,
                 leaderId: user.uid,
