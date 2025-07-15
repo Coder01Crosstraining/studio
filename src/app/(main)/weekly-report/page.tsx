@@ -92,6 +92,10 @@ export default function DailyReportPage() {
     try {
         const siteRef = doc(db, "sites", user.siteId);
         
+        // The validated and coerced 'values' object from react-hook-form is used here.
+        // `values.newRevenue` and `values.renewalRate` are guaranteed to be numbers
+        // because of `z.coerce.number()` in the schema.
+        
         await runTransaction(db, async (transaction) => {
             const siteDoc = await transaction.get(siteRef);
             if (!siteDoc.exists()) {
@@ -100,8 +104,8 @@ export default function DailyReportPage() {
 
             const currentData = siteDoc.data() as Site;
             
-            // Explicitly ensure the value is a number before summing
-            const newTotalRevenue = Number(currentData.revenue || 0) + Number(values.newRevenue);
+            // This calculation is now safe because `values.newRevenue` is a number.
+            const newTotalRevenue = (currentData.revenue || 0) + values.newRevenue;
             
             transaction.update(siteRef, {
                 revenue: newTotalRevenue,
@@ -110,15 +114,8 @@ export default function DailyReportPage() {
             const reportCollectionRef = collection(db, "sites", user.siteId, "daily-reports");
             const newReportRef = doc(reportCollectionRef);
             
-            // Ensure data being saved to the report also uses the coerced numbers
-            const reportData = {
-              ...values, 
-              newRevenue: Number(values.newRevenue), // Ensure it's a number
-              renewalRate: Number(values.renewalRate), // Ensure it's a number
-            };
-
             transaction.set(newReportRef, {
-                ...reportData,
+                ...values, // The entire validated 'values' object is used
                 date: format(values.date, 'yyyy-MM-dd'),
                 siteId: user.siteId,
                 leaderId: user.uid,
