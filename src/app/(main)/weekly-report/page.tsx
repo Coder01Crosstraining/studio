@@ -100,6 +100,7 @@ export default function DailyReportPage() {
 
             const currentData = siteDoc.data() as Site;
             
+            // Explicitly ensure the value is a number before summing
             const newTotalRevenue = Number(currentData.revenue || 0) + Number(values.newRevenue);
             
             transaction.update(siteRef, {
@@ -108,8 +109,16 @@ export default function DailyReportPage() {
 
             const reportCollectionRef = collection(db, "sites", user.siteId, "daily-reports");
             const newReportRef = doc(reportCollectionRef);
+            
+            // Ensure data being saved to the report also uses the coerced numbers
+            const reportData = {
+              ...values, 
+              newRevenue: Number(values.newRevenue), // Ensure it's a number
+              renewalRate: Number(values.renewalRate), // Ensure it's a number
+            };
+
             transaction.set(newReportRef, {
-                ...values,
+                ...reportData,
                 date: format(values.date, 'yyyy-MM-dd'),
                 siteId: user.siteId,
                 leaderId: user.uid,
