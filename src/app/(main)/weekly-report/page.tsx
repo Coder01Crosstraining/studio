@@ -101,7 +101,6 @@ export default function DailyReportPage() {
 
             const currentData = siteDoc.data() as Site;
             
-            // FIX: Explicitly cast both operands to Number to ensure mathematical addition
             const newTotalRevenue = Number(currentData.revenue || 0) + Number(values.newRevenue);
             
             transaction.update(siteRef, {
@@ -212,7 +211,7 @@ export default function DailyReportPage() {
                 <FormItem><FormLabel>Desafío del Día</FormLabel><FormControl><Textarea placeholder="Una de las máquinas de cardio requiere mantenimiento." {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="lessonLearned" render={({ field }) => (
-                <FormItem><FormLabel>Lección Aprendida del Día</FormLabel><FormControl><Textarea placeholder="La campaña de 'trae un amigo' está funcionando muy bien en la tarde." {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Lección Aprendida del Día</FormLabel><FormControl><Textarea placeholder="La lección aprendida de hoy es..." {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               
               <Button type="submit" disabled={isLoading}>

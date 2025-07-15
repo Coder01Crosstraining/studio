@@ -9,7 +9,7 @@ import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Site, SiteId, DailyReport, UserRole, TaskTemplate, TaskInstance } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
 import { updateNpsForSiteIfStale } from '@/services/google-sheets';
-import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle, CheckCircle2, Calculator } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { format, getDay, getDate, getDaysInMonth, startOfDay, startOfMonth, startOfWeek, endOfDay, endOfWeek, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { TaskChecklistDialog } from '@/app/(main)/tasks/components/task-checklist-dialog';
 import { useAuth } from '@/lib/auth';
 import { cn } from '@/lib/utils';
+import { recalculateSiteRevenue } from '@/app/(main)/actions';
 
 const chartConfig = {
   revenue: { label: 'Ingresos', color: 'hsl(var(--chart-1))' },
@@ -56,7 +57,7 @@ function calculateMonthProgress(today: Date) {
     const dateString = currentDate.toISOString().split('T')[0];
 
     if (dayOfWeek === 0) { // Sunday
-      effectiveBusinessDaysPast += 0;
+      effectiveBusinessDaysPast += 0.5;
     } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) { // Holiday or Saturday
       effectiveBusinessDaysPast += 0.5;
     } else { // Weekday
@@ -71,7 +72,7 @@ function calculateMonthProgress(today: Date) {
     const dateString = currentDate.toISOString().split('T')[0];
     
     if (dayOfWeek === 0) {
-      effectiveBusinessDaysRemaining += 0;
+      effectiveBusinessDaysRemaining += 0.5;
     } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) { // Holiday or Saturday
       effectiveBusinessDaysRemaining += 0.5;
     } else { // Weekday
@@ -162,6 +163,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
     const [forecast, setForecast] = useState<GenerateSalesForecastOutput | null>(null);
     const [isForecastLoading, setIsForecastLoading] = useState(true);
     const [isRecalculating, setIsRecalculating] = useState(false);
+    const [isRecalculatingRevenue, setIsRecalculatingRevenue] = useState(false);
     const [pendingTasks, setPendingTasks] = useState<PendingTasksSummary | null>(null);
     const [isTasksLoading, setIsTasksLoading] = useState(true);
     const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
@@ -346,6 +348,25 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
         }
       };
 
+    const handleRecalculateRevenue = async () => {
+        if (!siteId) return;
+        setIsRecalculatingRevenue(true);
+        const result = await recalculateSiteRevenue(siteId);
+        if (result.success) {
+            toast({
+                title: "Ventas Recalculadas",
+                description: `El nuevo total es ${formatCurrency(result.total || 0)}. El panel se ha actualizado.`,
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Error al Recalcular',
+                description: result.error,
+            });
+        }
+        setIsRecalculatingRevenue(false);
+    }
+
 
     const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 
@@ -358,7 +379,19 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
             <div className="space-y-4">
                 <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Ventas a la Fecha</CardTitle></CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                           <CardTitle className="text-sm font-medium">Ventas a la Fecha</CardTitle>
+                           {role === 'CEO' && (
+                            <UITooltip>
+                                <UITooltipTrigger asChild>
+                                     <Button variant="ghost" size="icon" onClick={handleRecalculateRevenue} disabled={isRecalculatingRevenue}>
+                                        {isRecalculatingRevenue ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
+                                    </Button>
+                                </UITooltipTrigger>
+                                <UITooltipContent><p>Recalcular total desde reportes</p></UITooltipContent>
+                            </UITooltip>
+                           )}
+                        </CardHeader>
                         <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.revenue)}</div></CardContent>
                     </Card>
                     <Card>
