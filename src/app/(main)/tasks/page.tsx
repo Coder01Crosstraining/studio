@@ -19,10 +19,10 @@ import { PlusCircle, Edit, Loader2, Trash2, CheckCircle2, AlertCircle } from 'lu
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot, orderBy, getDocs, where, startOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, Timestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, getDocs, where, Timestamp } from 'firebase/firestore';
 import { createTaskTemplateAction } from '../management/task-actions';
 import type { Site, TaskTemplate, TaskFrequency, TaskInstance } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, startOfDay, startOfWeek, startOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const taskTemplateSchema = z.object({
