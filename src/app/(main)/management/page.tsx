@@ -6,8 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/lib/auth';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, doc, updateDoc, query, onSnapshot, orderBy } from 'firebase/firestore';
-import type { Site, User, UserRole, SiteId, TaskTemplate, TaskFrequency } from '@/lib/types';
+import { collection, getDocs, addDoc, doc, updateDoc, query, onSnapshot } from 'firebase/firestore';
+import type { Site, User, UserRole, SiteId } from '@/lib/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,16 +18,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit, Loader2, AlertTriangle, UserCog, UserX, UserCheck, UserPlus, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { PlusCircle, Edit, Loader2, AlertTriangle, UserX, UserCheck, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { authorizeDocumentAction } from './actions';
 import { FullPageLoader } from '@/components/loader';
-import { createTaskTemplateAction } from './task-actions';
-import { Textarea } from '@/components/ui/textarea';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 const siteSchema = z.object({
   name: z.string().min(3, "El nombre de la sede debe tener al menos 3 caracteres."),
@@ -51,147 +46,6 @@ const userSchema = z.object({
 const authorizeSchema = z.object({
   documentId: z.string().min(5, "El número de cédula debe tener al menos 5 caracteres."),
 });
-
-const taskTemplateSchema = z.object({
-  title: z.string().min(5, "El título debe tener al menos 5 caracteres."),
-  description: z.string().min(10, "La descripción debe tener al menos 10 caracteres."),
-  frequency: z.enum(['daily', 'weekly', 'monthly'], { required_error: "La frecuencia es obligatoria." }),
-});
-
-const frequencyText: Record<TaskFrequency, string> = {
-  daily: 'Diaria',
-  weekly: 'Semanal',
-  monthly: 'Mensual',
-};
-
-
-function TaskManagement({ loading, taskTemplates, refetchTaskTemplates }: { loading: boolean, taskTemplates: TaskTemplate[], refetchTaskTemplates: () => void }) {
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState<TaskTemplate | null>(null);
-
-  const form = useForm<z.infer<typeof taskTemplateSchema>>({ 
-    resolver: zodResolver(taskTemplateSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      frequency: "daily",
-    }
-  });
-
-  const handleOpenDialog = (template: TaskTemplate | null = null) => {
-    setEditingTemplate(template);
-    form.reset(template ? { ...template } : { title: '', description: '', frequency: 'daily' });
-    setIsDialogOpen(true);
-  };
-
-  const handleTemplateSubmit = async (values: z.infer<typeof taskTemplateSchema>) => {
-    if (!user) return;
-    setIsSubmitting(true);
-    try {
-        if (editingTemplate) {
-            // Update logic here
-        } else {
-            const result = await createTaskTemplateAction({ ...values, creatorId: user.uid });
-            if (result.success) {
-                toast({ title: "Plantilla Creada", description: "La nueva plantilla de tarea ha sido creada." });
-                refetchTaskTemplates();
-                setIsDialogOpen(false);
-            } else {
-                throw new Error(result.error);
-            }
-        }
-    } catch (error: any) {
-        console.error("Error saving task template: ", error);
-        toast({ variant: "destructive", title: "Error", description: error.message || "No se pudo guardar la plantilla." });
-    } finally {
-        setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Plantillas de Tareas</CardTitle>
-          <CardDescription className="pt-1">Crea y gestiona las tareas recurrentes para las sedes.</CardDescription>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}><PlusCircle className="mr-2 h-4 w-4" /> Nueva Plantilla</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingTemplate ? 'Editar Plantilla' : 'Nueva Plantilla de Tarea'}</DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleTemplateSubmit)} className="space-y-4 py-4">
-                <FormField control={form.control} name="title" render={({ field }) => (
-                  <FormItem><FormLabel>Título de la Tarea</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="frequency" render={({ field }) => (
-                  <FormItem><FormLabel>Frecuencia</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Elige una frecuencia" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="daily">Diaria</SelectItem>
-                        <SelectItem value="weekly">Semanal</SelectItem>
-                        <SelectItem value="monthly">Mensual</SelectItem>
-                      </SelectContent>
-                    </Select><FormMessage />
-                  </FormItem>
-                )} />
-                <DialogFooter>
-                  <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {editingTemplate ? 'Guardar Cambios' : 'Crear Plantilla'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
-        {loading ? <div className="flex justify-center items-center h-40"><Loader2 className="h-8 w-8 animate-spin" /></div> : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Título</TableHead>
-                <TableHead>Frecuencia</TableHead>
-                <TableHead>Fecha Creación</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {taskTemplates.length === 0 && (
-                <TableRow><TableCell colSpan={4} className="h-24 text-center">No hay plantillas de tareas creadas.</TableCell></TableRow>
-              )}
-              {taskTemplates.map(template => (
-                <TableRow key={template.id}>
-                  <TableCell className="font-medium">{template.title}</TableCell>
-                  <TableCell><Badge variant="secondary">{frequencyText[template.frequency]}</Badge></TableCell>
-                  <TableCell>{format(template.createdAt.toDate(), 'PPP', { locale: es })}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(template)} disabled><Edit className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" disabled><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
 
 function SiteManagement({ sites, users, loading, refetchSites }: { sites: Site[], users: User[], loading: boolean, refetchSites: () => void }) {
   const { toast } = useToast();
@@ -376,7 +230,6 @@ function UserManagement({ sites, users, loading, refetchUsers }: { sites: Site[]
     const [isSubmittingStatus, setIsSubmittingStatus] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
-    const [togglingUser, setTogglingUser] = useState<User | null>(null);
     const [isAuthorizeDialogOpen, setIsAuthorizeDialogOpen] = useState(false);
     const [isAuthorizing, setIsAuthorizing] = useState(false);
 
@@ -427,7 +280,6 @@ function UserManagement({ sites, users, loading, refetchUsers }: { sites: Site[]
             toast({ variant: "destructive", title: "Error", description: "No se pudo cambiar el estado del usuario." });
         } finally {
             setIsSubmittingStatus(false);
-            setTogglingUser(null);
         }
     };
     
@@ -669,13 +521,10 @@ export default function ManagementPage() {
   
   const [sites, setSites] = useState<Site[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [taskTemplates, setTaskTemplates] = useState<TaskTemplate[]>([]);
   const [loadingSites, setLoadingSites] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingTasks, setLoadingTasks] = useState(true);
 
   useEffect(() => {
-    // This listener fetches data but doesn't handle unauthorized access.
     // The MainLayout component is now responsible for route protection.
     const unsubscribeSites = onSnapshot(query(collection(db, "sites")), (snapshot) => {
         const sitesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Site));
@@ -688,17 +537,10 @@ export default function ManagementPage() {
         setUsers(usersData);
         setLoadingUsers(false);
     });
-    
-    const unsubscribeTasks = onSnapshot(query(collection(db, "task-templates"), orderBy("createdAt", "desc")), (snapshot) => {
-        const tasksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TaskTemplate));
-        setTaskTemplates(tasksData);
-        setLoadingTasks(false);
-    });
 
     return () => {
         unsubscribeSites();
         unsubscribeUsers();
-        unsubscribeTasks();
     }
   }, []);
 
@@ -715,13 +557,6 @@ export default function ManagementPage() {
       setUsers(querySnapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User)));
       setLoadingUsers(false);
   }
-
-  const refetchTaskTemplates = async () => {
-      setLoadingTasks(true);
-      const querySnapshot = await getDocs(query(collection(db, "task-templates"), orderBy("createdAt", "desc")));
-      setTaskTemplates(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TaskTemplate)));
-      setLoadingTasks(false);
-  }
   
   if (role !== 'CEO') {
     return <FullPageLoader />;
@@ -734,16 +569,12 @@ export default function ManagementPage() {
         <TabsList>
           <TabsTrigger value="sites">Sedes</TabsTrigger>
           <TabsTrigger value="users">Usuarios</TabsTrigger>
-          <TabsTrigger value="tasks">Plantillas de Tareas</TabsTrigger>
         </TabsList>
         <TabsContent value="sites" className="mt-4">
           <SiteManagement sites={sites} users={users} loading={loadingSites || loadingUsers} refetchSites={refetchSites} />
         </TabsContent>
         <TabsContent value="users" className="mt-4">
           <UserManagement sites={sites} users={users} loading={loadingUsers || loadingSites} refetchUsers={refetchUsers} />
-        </TabsContent>
-        <TabsContent value="tasks" className="mt-4">
-          <TaskManagement loading={loadingTasks} taskTemplates={taskTemplates} refetchTaskTemplates={refetchTaskTemplates} />
         </TabsContent>
       </Tabs>
     </div>

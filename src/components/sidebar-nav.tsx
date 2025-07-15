@@ -11,7 +11,7 @@ import {
   Settings,
   History,
   FolderKanban,
-  UserCog,
+  ClipboardCheck,
   Archive,
   LayoutGrid,
 } from "lucide-react";
@@ -70,6 +70,12 @@ const navItems = [
     icon: FolderKanban,
     label: "Gestión Documental",
     roles: ["SiteLeader", "CEO"],
+  },
+  {
+    href: "/tasks",
+    icon: ClipboardCheck,
+    label: "Tareas",
+    roles: ["CEO"],
   },
   {
     href: "/history",
