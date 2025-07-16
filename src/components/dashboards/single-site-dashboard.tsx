@@ -4,12 +4,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Line, LineChart, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { Line, LineChart, Tooltip as RechartsTooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Site, SiteId, DailyReport, UserRole, TaskTemplate, TaskInstance } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
 import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle, CheckCircle2, Calculator, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { format, getDay, getDate, getDaysInMonth, startOfDay, startOfMonth, startOfWeek, endOfDay, endOfWeek, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { db } from '@/lib/firebase';
@@ -399,14 +399,14 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                            <CardTitle className="text-sm font-medium">Ventas a la Fecha</CardTitle>
                            {role === 'CEO' && (
-                            <UITooltip>
-                                <UITooltipTrigger asChild>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
                                      <Button variant="ghost" size="icon" onClick={handleRecalculateRevenue} disabled={isRecalculatingRevenue}>
                                         {isRecalculatingRevenue ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calculator className="h-4 w-4" />}
                                     </Button>
-                                </UITooltipTrigger>
-                                <UITooltipContent><p>Recalcular total desde reportes</p></UITooltipContent>
-                            </UITooltip>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Recalcular total desde reportes</p></TooltipContent>
+                            </Tooltip>
                            )}
                         </CardHeader>
                         <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.revenue)}</div></CardContent>
@@ -434,7 +434,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                             <CardTitle className="text-sm font-medium">Pronóstico Ventas (Mes)</CardTitle>
                             <div className="flex items-center gap-1">
                                 {forecast && (
-                                    <UITooltip><UITooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-pointer" /></UITooltipTrigger><UITooltipContent><p className="max-w-xs">{forecast.reasoning}</p></UITooltipContent></UITooltip>
+                                    <Tooltip><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-pointer" /></TooltipTrigger><TooltipContent><p className="max-w-xs">{forecast.reasoning}</p></TooltipContent></Tooltip>
                                 )}
                                 <Button variant="ghost" size="icon" onClick={() => fetchAndCacheForecast()} disabled={isRecalculating}>
                                     {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -495,7 +495,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                     <ChartContainer config={chartConfig} className="h-[350px] w-full">
                         <LineChart data={dailyData || []}>
                         <CartesianGrid vertical={false} /><XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} /><YAxis tickFormatter={(value) => `$${value / 1000}k`} />
-                        <Tooltip content={<ChartTooltipContent formatter={(value, name) => [formatCurrency(value as number), name === 'revenue' ? 'Ingresos' : 'Meta']} />} />
+                        <RechartsTooltip content={<ChartTooltipContent formatter={(value, name) => [formatCurrency(value as number), name === 'revenue' ? 'Ingresos' : 'Meta']} />} />
                         <Line type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} dot={true} /><Line type="monotone" dataKey="goal" stroke="var(--color-goal)" strokeDasharray="5 5" />
                         </LineChart>
                     </ChartContainer>
