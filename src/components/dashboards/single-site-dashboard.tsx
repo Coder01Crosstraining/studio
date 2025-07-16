@@ -55,9 +55,7 @@ function calculateMonthProgress(today: Date) {
     const dayOfWeek = getDay(currentDate); // 0=Sun, 1=Mon, ..., 6=Sat
     const dateString = currentDate.toISOString().split('T')[0];
 
-    if (dayOfWeek === 0) { // Sunday
-      effectiveBusinessDaysPast += 0.5;
-    } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) { // Holiday or Saturday
+    if (dayOfWeek === 0 || dayOfWeek === 6 || colombianHolidays2024.includes(dateString)) { // Sunday, Saturday or Holiday
       effectiveBusinessDaysPast += 0.5;
     } else { // Weekday
       effectiveBusinessDaysPast += 1;
@@ -70,9 +68,7 @@ function calculateMonthProgress(today: Date) {
     const dayOfWeek = getDay(currentDate);
     const dateString = currentDate.toISOString().split('T')[0];
     
-    if (dayOfWeek === 0) {
-      effectiveBusinessDaysRemaining += 0.5;
-    } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) { // Holiday or Saturday
+    if (dayOfWeek === 0 || dayOfWeek === 6 || colombianHolidays2024.includes(dateString)) {
       effectiveBusinessDaysRemaining += 0.5;
     } else { // Weekday
       effectiveBusinessDaysRemaining += 1;
@@ -381,6 +377,13 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
 
     }, [kpiData]);
 
+    const forecastStatus = useMemo(() => {
+        if (!forecast || !kpiData || kpiData.monthlyGoal === 0) return 'on_track';
+        if (forecast.forecast > kpiData.monthlyGoal) return 'above';
+        if (forecast.forecast < kpiData.monthlyGoal) return 'below';
+        return 'on_track';
+    }, [forecast, kpiData]);
+
 
     const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 
@@ -465,7 +468,14 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                             {isForecastLoading && !forecast ? (
                                 <div className="flex items-center gap-2 pt-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Calculando...</span></div>
                             ) : (
-                                <div className="text-2xl font-bold">{formatCurrency(forecast?.forecast || 0)}</div>
+                                <div className={cn("text-2xl font-bold flex items-center gap-2", {
+                                    'text-green-600': forecastStatus === 'above',
+                                    'text-red-600': forecastStatus === 'below',
+                                })}>
+                                    {forecastStatus === 'above' && <TrendingUp />}
+                                    {forecastStatus === 'below' && <TrendingDown />}
+                                    {formatCurrency(forecast?.forecast || 0)}
+                                </div>
                             )}
                         </CardContent>
                     </Card>

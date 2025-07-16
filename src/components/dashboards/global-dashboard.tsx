@@ -47,9 +47,7 @@ function calculateMonthProgress(today: Date) {
     const dayOfWeek = getDay(currentDate); // 0=Sun, 1=Mon, ..., 6=Sat
     const dateString = currentDate.toISOString().split('T')[0];
 
-    if (dayOfWeek === 0) { // Sunday
-      effectiveBusinessDaysPast += 0.5;
-    } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) { // Holiday or Saturday
+    if (dayOfWeek === 0 || dayOfWeek === 6 || colombianHolidays2024.includes(dateString)) { // Sunday, Saturday or Holiday
       effectiveBusinessDaysPast += 0.5;
     } else { // Weekday
       effectiveBusinessDaysPast += 1;
@@ -62,9 +60,7 @@ function calculateMonthProgress(today: Date) {
     const dayOfWeek = getDay(currentDate);
     const dateString = currentDate.toISOString().split('T')[0];
     
-    if (dayOfWeek === 0) {
-      effectiveBusinessDaysRemaining += 0.5;
-    } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) { // Holiday or Saturday
+    if (dayOfWeek === 0 || dayOfWeek === 6 || colombianHolidays2024.includes(dateString)) {
       effectiveBusinessDaysRemaining += 0.5;
     } else { // Weekday
       effectiveBusinessDaysRemaining += 1;
@@ -337,6 +333,13 @@ export function GlobalDashboard() {
     return { expected, difference, status };
   };
 
+  const getForecastStatus = (forecastValue: number, goal: number) => {
+    if (goal === 0) return 'on_track';
+    if (forecastValue > goal) return 'above';
+    if (forecastValue < goal) return 'below';
+    return 'on_track';
+  }
+
   if (isKpiLoading) {
     return <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -379,7 +382,14 @@ export function GlobalDashboard() {
                     {isForecastLoading && Object.keys(forecasts).length === 0 ? (
                         <div className="flex items-center gap-2 pt-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Calculando...</span></div>
                     ) : (
-                        <div className="text-2xl font-bold">{formatCurrency(globalSummary.salesForecast)}</div>
+                        <div className={cn("text-2xl font-bold flex items-center gap-2", {
+                            'text-green-600': getForecastStatus(globalSummary.salesForecast, globalSummary.monthlyGoal) === 'above',
+                            'text-red-600': getForecastStatus(globalSummary.salesForecast, globalSummary.monthlyGoal) === 'below',
+                        })}>
+                            {getForecastStatus(globalSummary.salesForecast, globalSummary.monthlyGoal) === 'above' && <TrendingUp />}
+                            {getForecastStatus(globalSummary.salesForecast, globalSummary.monthlyGoal) === 'below' && <TrendingDown />}
+                            {formatCurrency(globalSummary.salesForecast)}
+                        </div>
                     )}
                 </CardContent>
             </Card>
@@ -467,6 +477,7 @@ export function GlobalDashboard() {
                         const goalCompletion = data.monthlyGoal > 0 ? (data.revenue / data.monthlyGoal) * 100 : 0;
                         const forecast = forecasts[siteId as SiteId];
                         const compliance = getComplianceForSite(data);
+                        const forecastStatus = getForecastStatus(forecast?.forecast || 0, data.monthlyGoal);
                         return (
                         <TableRow key={siteId}>
                         <TableCell className="font-medium">{siteMap.get(siteId as SiteId) || siteId}</TableCell>
@@ -492,7 +503,14 @@ export function GlobalDashboard() {
                         <TableCell className="text-right">
                             {isForecastLoading && !forecasts[siteId as SiteId] ? ( <div className="flex justify-end"><Loader2 className="h-4 w-4 animate-spin" /></div> ) : (
                             <div className="flex items-center justify-end gap-1">
-                                {formatCurrency(forecasts[siteId as SiteId]?.forecast || 0)}
+                                <div className={cn("flex items-center justify-end gap-1 font-medium", 
+                                    forecastStatus === 'above' && 'text-green-600',
+                                    forecastStatus === 'below' && 'text-red-600',
+                                )}>
+                                    {forecastStatus === 'above' && <TrendingUp className="h-4 w-4"/>}
+                                    {forecastStatus === 'below' && <TrendingDown className="h-4 w-4"/>}
+                                    {formatCurrency(forecasts[siteId as SiteId]?.forecast || 0)}
+                                </div>
                                 <Tooltip><TooltipTrigger asChild><Info className="h-3 w-3 text-muted-foreground cursor-pointer" /></TooltipTrigger>
                                 <TooltipContent align="end"><p className="max-w-xs">{forecasts[siteId as SiteId]?.reasoning}</p></TooltipContent>
                                 </Tooltip>
