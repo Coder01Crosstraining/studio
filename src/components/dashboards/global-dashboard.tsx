@@ -47,9 +47,9 @@ function calculateMonthProgress(today: Date) {
     const dayOfWeek = getDay(currentDate); // 0=Sun, 1=Mon, ..., 6=Sat
     const dateString = currentDate.toISOString().split('T')[0];
 
-    if (dayOfWeek === 0 || dayOfWeek === 6 || colombianHolidays2024.includes(dateString)) { // Sunday, Saturday or Holiday
+    if (dayOfWeek === 0 || colombianHolidays2024.includes(dateString)) { // Sunday or Holiday
       effectiveBusinessDaysPast += 0.5;
-    } else { // Weekday
+    } else { // Weekday or Saturday
       effectiveBusinessDaysPast += 1;
     }
   }
@@ -60,9 +60,9 @@ function calculateMonthProgress(today: Date) {
     const dayOfWeek = getDay(currentDate);
     const dateString = currentDate.toISOString().split('T')[0];
     
-    if (dayOfWeek === 0 || dayOfWeek === 6 || colombianHolidays2024.includes(dateString)) {
+    if (dayOfWeek === 0 || colombianHolidays2024.includes(dateString)) {
       effectiveBusinessDaysRemaining += 0.5;
-    } else { // Weekday
+    } else { // Weekday or Saturday
       effectiveBusinessDaysRemaining += 1;
     }
   }
