@@ -8,7 +8,7 @@ import { Line, LineChart, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Site, SiteId, DailyReport, UserRole, TaskTemplate, TaskInstance } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
-import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle, CheckCircle2, Calculator, TrendingUp, TrendingDown, Minus, MinusCircle } from 'lucide-react';
+import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle, CheckCircle2, Calculator, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { format, getDay, getDate, getDaysInMonth, startOfDay, startOfMonth, startOfWeek, endOfDay, endOfWeek, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -358,25 +358,26 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
         setIsRecalculatingRevenue(false);
     }
 
-    const salesPace = useMemo(() => {
-        if (!kpiData) return { dailyGoal: 0, status: 'on_track' as const };
+    const compliance = useMemo(() => {
+        if (!kpiData) return { expected: 0, difference: 0, status: 'on_track' as const };
 
         const monthProgress = calculateMonthProgress(new Date());
         const totalEffectiveDays = monthProgress.effectiveBusinessDaysPast + monthProgress.effectiveBusinessDaysRemaining;
         
-        if (kpiData.monthlyGoal === 0 || totalEffectiveDays === 0 || monthProgress.effectiveBusinessDaysPast === 0) {
-            return { dailyGoal: 0, status: 'on_track' as const };
+        if (kpiData.monthlyGoal === 0 || totalEffectiveDays === 0) {
+            return { expected: 0, difference: kpiData.revenue, status: 'on_track' as const };
         }
 
         const dailyGoal = kpiData.monthlyGoal / totalEffectiveDays;
-        const currentPace = kpiData.revenue / monthProgress.effectiveBusinessDaysPast;
+        const expected = dailyGoal * monthProgress.effectiveBusinessDaysPast;
+        const difference = kpiData.revenue - expected;
         
         let status: 'above' | 'below' | 'on_track';
-        if (currentPace > dailyGoal) status = 'above';
-        else if (currentPace < dailyGoal) status = 'below';
+        if (difference > 0) status = 'above';
+        else if (difference < 0) status = 'below';
         else status = 'on_track';
         
-        return { dailyGoal, status };
+        return { expected, difference, status };
 
     }, [kpiData]);
 
@@ -413,13 +414,16 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                           <CardTitle className="text-sm font-medium">Ritmo de Ventas</CardTitle>
+                           <CardTitle className="text-sm font-medium">Desvío vs. Proyectado</CardTitle>
                         </CardHeader>
                         <CardContent>
-                           <div className="text-2xl font-bold">{formatCurrency(salesPace.dailyGoal)} <span className="text-sm font-normal text-muted-foreground">/ día</span></div>
-                           {salesPace.status === 'above' && <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Vas por encima del ritmo esperado.</p>}
-                           {salesPace.status === 'below' && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Vas por debajo del ritmo esperado.</p>}
-                           {salesPace.status === 'on_track' && <p className="text-xs text-amber-600 flex items-center gap-1"><MinusCircle className="h-3 w-3" /> Vas exactamente al ritmo.</p>}
+                           <div className={cn("text-2xl font-bold flex items-center gap-2", { 'text-green-600': compliance.status === 'above', 'text-red-600': compliance.status === 'below' })}>
+                                {compliance.status === 'above' && <TrendingUp />}
+                                {compliance.status === 'below' && <TrendingDown />}
+                                {compliance.status === 'on_track' && <Minus />}
+                                {formatCurrency(compliance.difference)}
+                           </div>
+                           <p className="text-xs text-muted-foreground">Proyectado: {formatCurrency(compliance.expected)} / Real: {formatCurrency(kpiData.revenue)}</p>
                         </CardContent>
                     </Card>
                     <Card>
