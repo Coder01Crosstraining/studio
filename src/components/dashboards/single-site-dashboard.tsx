@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,7 +8,7 @@ import { Line, LineChart, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Site, SiteId, DailyReport, UserRole, TaskTemplate, TaskInstance } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
-import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle, CheckCircle2, Calculator, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle, CheckCircle2, Calculator, TrendingUp, TrendingDown, Minus, MinusCircle } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { format, getDay, getDate, getDaysInMonth, startOfDay, startOfMonth, startOfWeek, endOfDay, endOfWeek, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -358,21 +358,26 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
         setIsRecalculatingRevenue(false);
     }
 
-    const expectedCompliance = useMemo(() => {
-        if (!kpiData || kpiData.monthlyGoal === 0) return { diff: 0, tooltip: '' };
+    const salesPace = useMemo(() => {
+        if (!kpiData) return { dailyGoal: 0, status: 'on_track' as const };
 
         const monthProgress = calculateMonthProgress(new Date());
         const totalEffectiveDays = monthProgress.effectiveBusinessDaysPast + monthProgress.effectiveBusinessDaysRemaining;
         
-        if (totalEffectiveDays === 0) return { diff: 0, tooltip: 'El mes no ha comenzado.' };
+        if (kpiData.monthlyGoal === 0 || totalEffectiveDays === 0 || monthProgress.effectiveBusinessDaysPast === 0) {
+            return { dailyGoal: 0, status: 'on_track' as const };
+        }
 
         const dailyGoal = kpiData.monthlyGoal / totalEffectiveDays;
-        const expectedRevenue = dailyGoal * monthProgress.effectiveBusinessDaysPast;
-        const diff = kpiData.revenue - expectedRevenue;
+        const currentPace = kpiData.revenue / monthProgress.effectiveBusinessDaysPast;
+        
+        let status: 'above' | 'below' | 'on_track';
+        if (currentPace > dailyGoal) status = 'above';
+        else if (currentPace < dailyGoal) status = 'below';
+        else status = 'on_track';
+        
+        return { dailyGoal, status };
 
-        const tooltip = `Ritmo esperado para hoy: ${formatCurrency(expectedRevenue)}.`;
-
-        return { diff, tooltip };
     }, [kpiData]);
 
 
@@ -408,19 +413,13 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                           <CardTitle className="text-sm font-medium">Cumplimiento Esperado</CardTitle>
-                           <UITooltip>
-                               <UITooltipTrigger asChild>
-                                  <Info className="h-4 w-4 text-muted-foreground cursor-pointer" />
-                               </UITooltipTrigger>
-                               <UITooltipContent><p>{expectedCompliance.tooltip}</p></UITooltipContent>
-                           </UITooltip>
+                           <CardTitle className="text-sm font-medium">Ritmo de Ventas</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className={cn("text-2xl font-bold flex items-center gap-2", expectedCompliance.diff > 0 ? 'text-green-600' : expectedCompliance.diff < 0 ? 'text-red-600' : 'text-amber-600')}>
-                                {expectedCompliance.diff > 0 ? <TrendingUp /> : expectedCompliance.diff < 0 ? <TrendingDown /> : <Minus />}
-                                {formatCurrency(Math.abs(expectedCompliance.diff))}
-                            </div>
+                           <div className="text-2xl font-bold">{formatCurrency(salesPace.dailyGoal)} <span className="text-sm font-normal text-muted-foreground">/ día</span></div>
+                           {salesPace.status === 'above' && <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Vas por encima del ritmo esperado.</p>}
+                           {salesPace.status === 'below' && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Vas por debajo del ritmo esperado.</p>}
+                           {salesPace.status === 'on_track' && <p className="text-xs text-amber-600 flex items-center gap-1"><MinusCircle className="h-3 w-3" /> Vas exactamente al ritmo.</p>}
                         </CardContent>
                     </Card>
                     <Card>

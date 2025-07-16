@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Site, SiteId, DailyReport, MonthlyHistory } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
-import { Info, Loader2, Pencil, RefreshCw, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import { Info, Loader2, Pencil, RefreshCw, TrendingDown, TrendingUp, Minus, CheckCircle2, AlertCircle, MinusCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { getDay, getDate, getDaysInMonth, format, parse } from 'date-fns';
 import { useForm } from 'react-hook-form';
@@ -285,6 +285,8 @@ export function GlobalDashboard() {
     }
   };
 
+  const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+
   const globalSummary = useMemo(() => {
     const siteCount = Object.keys(kpiData).length;
     if (siteCount === 0) return { revenue: 0, retention: 0, nps: 0, salesForecast: 0, monthlyGoal: 0 };
@@ -296,20 +298,41 @@ export function GlobalDashboard() {
     const totalMonthlyGoal = Object.values(kpiData).reduce((sum, site) => sum + site.monthlyGoal, 0);
     return { revenue: totalRevenue, retention: avgRetention, nps: avgNps, salesForecast: totalForecast, monthlyGoal: totalMonthlyGoal };
   }, [kpiData, forecasts]);
-
-  const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
-
-  const getExpectedCompliance = (site: Site) => {
-    if (!site.monthlyGoal || site.monthlyGoal === 0) return { diff: 0 };
-
+  
+  const salesPace = useMemo(() => {
     const monthProgress = calculateMonthProgress(new Date());
     const totalEffectiveDays = monthProgress.effectiveBusinessDaysPast + monthProgress.effectiveBusinessDaysRemaining;
-    const dailyGoal = totalEffectiveDays > 0 ? site.monthlyGoal / totalEffectiveDays : 0;
-    const expectedRevenue = dailyGoal * monthProgress.effectiveBusinessDaysPast;
+    if (globalSummary.monthlyGoal === 0 || totalEffectiveDays === 0 || monthProgress.effectiveBusinessDaysPast === 0) {
+      return { dailyGoal: 0, status: 'on_track' as const };
+    }
     
-    return {
-      diff: site.revenue - expectedRevenue,
-    };
+    const dailyGoal = globalSummary.monthlyGoal / totalEffectiveDays;
+    const currentPace = globalSummary.revenue / monthProgress.effectiveBusinessDaysPast;
+    
+    let status: 'above' | 'below' | 'on_track';
+    if (currentPace > dailyGoal) status = 'above';
+    else if (currentPace < dailyGoal) status = 'below';
+    else status = 'on_track';
+    
+    return { dailyGoal, status };
+  }, [globalSummary]);
+
+  const getSalesPaceForSite = (site: Site) => {
+    const monthProgress = calculateMonthProgress(new Date());
+    const totalEffectiveDays = monthProgress.effectiveBusinessDaysPast + monthProgress.effectiveBusinessDaysRemaining;
+    if (site.monthlyGoal === 0 || totalEffectiveDays === 0 || monthProgress.effectiveBusinessDaysPast === 0) {
+      return { dailyGoal: 0, status: 'on_track' as const };
+    }
+
+    const dailyGoal = site.monthlyGoal / totalEffectiveDays;
+    const currentPace = site.revenue / monthProgress.effectiveBusinessDaysPast;
+    
+    let status: 'above' | 'below' | 'on_track';
+    if (currentPace > dailyGoal) status = 'above';
+    else if (currentPace < dailyGoal) status = 'below';
+    else status = 'on_track';
+    
+    return { dailyGoal, status };
   };
 
   if (isKpiLoading) {
@@ -319,7 +342,7 @@ export function GlobalDashboard() {
   return (
     <TooltipProvider>
       <div className="space-y-4">
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-5">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Ventas a la Fecha (Global)</CardTitle></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{formatCurrency(globalSummary.revenue)}</div></CardContent>
@@ -327,6 +350,17 @@ export function GlobalDashboard() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Meta del Mes (Global)</CardTitle></CardHeader>
                 <CardContent><div className="text-2xl font-bold">{formatCurrency(globalSummary.monthlyGoal)}</div></CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Ritmo de Ventas (Global)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(salesPace.dailyGoal)} <span className="text-sm font-normal text-muted-foreground">/ día</span></div>
+                    {salesPace.status === 'above' && <p className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Vas por encima del ritmo esperado.</p>}
+                    {salesPace.status === 'below' && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" /> Vas por debajo del ritmo esperado.</p>}
+                    {salesPace.status === 'on_track' && <p className="text-xs text-amber-600 flex items-center gap-1"><MinusCircle className="h-3 w-3" /> Vas exactamente al ritmo.</p>}
+                </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -418,7 +452,7 @@ export function GlobalDashboard() {
                         <TableHead className="text-right min-w-[150px]">Ventas a la Fecha</TableHead>
                         <TableHead className="text-right min-w-[150px]">Meta del Mes</TableHead>
                         <TableHead className="text-right min-w-[150px]">Cumplimiento (%)</TableHead>
-                        <TableHead className="text-right min-w-[150px]">Cumpl. Esperado</TableHead>
+                        <TableHead className="text-right min-w-[150px]">Ritmo de Ventas</TableHead>
                         <TableHead className="text-right min-w-[150px]">Pronóstico Ventas</TableHead>
                         <TableHead className="text-right min-w-[120px] hidden lg:table-cell">NPS</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
@@ -427,7 +461,7 @@ export function GlobalDashboard() {
                     {Object.entries(kpiData).map(([siteId, data]) => {
                         const goalCompletion = data.monthlyGoal > 0 ? (data.revenue / data.monthlyGoal) * 100 : 0;
                         const forecast = forecasts[siteId as SiteId];
-                        const expected = getExpectedCompliance(data);
+                        const pace = getSalesPaceForSite(data);
                         return (
                         <TableRow key={siteId}>
                         <TableCell className="font-medium">{siteMap.get(siteId as SiteId) || siteId}</TableCell>
@@ -435,10 +469,20 @@ export function GlobalDashboard() {
                         <TableCell className="text-right">{formatCurrency(data.monthlyGoal)}</TableCell>
                         <TableCell className="text-right font-medium">{goalCompletion.toFixed(1)}%</TableCell>
                         <TableCell className="text-right">
-                            <div className={cn("flex items-center justify-end gap-1 font-medium", expected.diff > 0 ? 'text-green-600' : expected.diff < 0 ? 'text-red-600' : 'text-amber-600')}>
-                                {expected.diff > 0 ? <TrendingUp className="h-4 w-4"/> : expected.diff < 0 ? <TrendingDown className="h-4 w-4"/> : <Minus className="h-4 w-4"/>}
-                                {formatCurrency(Math.abs(expected.diff))}
-                            </div>
+                            <Tooltip>
+                               <TooltipTrigger asChild>
+                                    <div className={cn("flex items-center justify-end gap-1 font-medium", 
+                                        pace.status === 'above' && 'text-green-600',
+                                        pace.status === 'below' && 'text-red-600',
+                                        pace.status === 'on_track' && 'text-amber-600',
+                                    )}>
+                                        {pace.status === 'above' ? <TrendingUp className="h-4 w-4"/> : pace.status === 'below' ? <TrendingDown className="h-4 w-4"/> : <Minus className="h-4 w-4"/>}
+                                    </div>
+                               </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Meta diaria: {formatCurrency(pace.dailyGoal)}</p>
+                                </TooltipContent>
+                            </Tooltip>
                         </TableCell>
                         <TableCell className="text-right">
                             {isForecastLoading && !forecasts[siteId as SiteId] ? ( <div className="flex justify-end"><Loader2 className="h-4 w-4 animate-spin" /></div> ) : (
