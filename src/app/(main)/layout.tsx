@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -9,6 +10,7 @@ import { SidebarNav } from "@/components/sidebar-nav";
 import { Button } from "@/components/ui/button";
 import { Menu, Building } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ToolsToolbar } from "@/components/ui/tools-toolbar";
 
 const CEO_ONLY_ROUTES = ['/management', '/history'];
 
@@ -62,6 +64,7 @@ function LayoutContainer({ children }: { children: React.ReactNode }) {
                 onClick={() => setOpen(false)}
             />
         )}
+        <ToolsToolbar />
       </div>
   );
 }
