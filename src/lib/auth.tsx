@@ -7,6 +7,7 @@ import { auth, db } from '@/lib/firebase';
 import type { User, UserRole } from '@/lib/types';
 import { FullPageLoader } from '@/components/loader';
 import { FirebaseError } from 'firebase/app';
+import { updateNpsForSiteIfStale } from '@/services/google-sheets';
 
 interface AuthContextType {
   user: User | null;
@@ -38,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await signOut(auth);
             setUser(null);
           } else {
-             setUser({
+             const loggedInUser: User = {
               uid: firebaseUser.uid,
               email: firebaseUser.email!,
               name: customData.name,
@@ -47,7 +48,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               photoURL: customData.photoURL,
               documentId: customData.documentId,
               status: customData.status || 'active',
-            });
+            };
+            setUser(loggedInUser);
+
+            // Trigger NPS update on login for site leaders
+            if (loggedInUser.role === 'SiteLeader' && loggedInUser.siteId) {
+                // We don't need to await this, it can run in the background
+                updateNpsForSiteIfStale(loggedInUser.siteId);
+            }
           }
         } else {
           // This can happen if the user is deleted from Firestore but not Auth.

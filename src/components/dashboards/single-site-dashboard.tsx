@@ -8,7 +8,6 @@ import { Line, LineChart, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Site, SiteId, DailyReport, UserRole, TaskTemplate, TaskInstance } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
-import { updateNpsForSiteIfStale } from '@/services/google-sheets';
 import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle, CheckCircle2, Calculator } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { format, getDay, getDate, getDaysInMonth, startOfDay, startOfMonth, startOfWeek, endOfDay, endOfWeek, endOfMonth } from 'date-fns';
@@ -313,14 +312,6 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
         fetchAndCacheForecast();
 
     }, [kpiData, siteId, fetchAndCacheForecast]);
-
-    // Trigger daily NPS update check
-    useEffect(() => {
-        if (siteId) {
-            updateNpsForSiteIfStale(siteId);
-        }
-    }, [siteId]);
-
 
     const handleKpiSubmit = async (values: z.infer<typeof kpiSchema>) => {
         if (!siteId || !kpiData) return;
