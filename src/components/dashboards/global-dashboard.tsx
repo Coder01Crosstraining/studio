@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Site, SiteId, DailyReport, MonthlyHistory } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
-import { Info, Loader2, Pencil, RefreshCw } from 'lucide-react';
+import { Info, Loader2, Pencil, RefreshCw, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { getDay, getDate, getDaysInMonth, format, parse } from 'date-fns';
 import { useForm } from 'react-hook-form';
@@ -20,6 +20,7 @@ import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, getDocs, limit, orderBy, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/lib/auth';
+import { cn } from '@/lib/utils';
 
 const kpiSchema = z.object({
   revenue: z.coerce.number().min(0, "Las ventas deben ser un número positivo."),
@@ -47,7 +48,7 @@ function calculateMonthProgress(today: Date) {
     const dateString = currentDate.toISOString().split('T')[0];
 
     if (dayOfWeek === 0) { // Sunday
-      effectiveBusinessDaysPast += 0;
+      effectiveBusinessDaysPast += 0.5;
     } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) { // Holiday or Saturday
       effectiveBusinessDaysPast += 0.5;
     } else { // Weekday
@@ -62,8 +63,8 @@ function calculateMonthProgress(today: Date) {
     const dateString = currentDate.toISOString().split('T')[0];
     
     if (dayOfWeek === 0) {
-      effectiveBusinessDaysRemaining += 0;
-    } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) {
+      effectiveBusinessDaysRemaining += 0.5;
+    } else if (colombianHolidays2024.includes(dateString) || dayOfWeek === 6) { // Holiday or Saturday
       effectiveBusinessDaysRemaining += 0.5;
     } else { // Weekday
       effectiveBusinessDaysRemaining += 1;
@@ -298,6 +299,19 @@ export function GlobalDashboard() {
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 
+  const getExpectedCompliance = (site: Site) => {
+    if (!site.monthlyGoal || site.monthlyGoal === 0) return { diff: 0 };
+
+    const monthProgress = calculateMonthProgress(new Date());
+    const totalEffectiveDays = monthProgress.effectiveBusinessDaysPast + monthProgress.effectiveBusinessDaysRemaining;
+    const dailyGoal = totalEffectiveDays > 0 ? site.monthlyGoal / totalEffectiveDays : 0;
+    const expectedRevenue = dailyGoal * monthProgress.effectiveBusinessDaysPast;
+    
+    return {
+      diff: site.revenue - expectedRevenue,
+    };
+  };
+
   if (isKpiLoading) {
     return <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -404,8 +418,8 @@ export function GlobalDashboard() {
                         <TableHead className="text-right min-w-[150px]">Ventas a la Fecha</TableHead>
                         <TableHead className="text-right min-w-[150px]">Meta del Mes</TableHead>
                         <TableHead className="text-right min-w-[150px]">Cumplimiento (%)</TableHead>
+                        <TableHead className="text-right min-w-[150px]">Cumpl. Esperado</TableHead>
                         <TableHead className="text-right min-w-[150px]">Pronóstico Ventas</TableHead>
-                        <TableHead className="text-right min-w-[120px] hidden lg:table-cell">Retención</TableHead>
                         <TableHead className="text-right min-w-[120px] hidden lg:table-cell">NPS</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                     </TableRow></TableHeader>
@@ -413,12 +427,19 @@ export function GlobalDashboard() {
                     {Object.entries(kpiData).map(([siteId, data]) => {
                         const goalCompletion = data.monthlyGoal > 0 ? (data.revenue / data.monthlyGoal) * 100 : 0;
                         const forecast = forecasts[siteId as SiteId];
+                        const expected = getExpectedCompliance(data);
                         return (
                         <TableRow key={siteId}>
                         <TableCell className="font-medium">{siteMap.get(siteId as SiteId) || siteId}</TableCell>
                         <TableCell className="text-right">{formatCurrency(data.revenue)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(data.monthlyGoal)}</TableCell>
                         <TableCell className="text-right font-medium">{goalCompletion.toFixed(1)}%</TableCell>
+                        <TableCell className="text-right">
+                            <div className={cn("flex items-center justify-end gap-1 font-medium", expected.diff > 0 ? 'text-green-600' : expected.diff < 0 ? 'text-red-600' : 'text-amber-600')}>
+                                {expected.diff > 0 ? <TrendingUp className="h-4 w-4"/> : expected.diff < 0 ? <TrendingDown className="h-4 w-4"/> : <Minus className="h-4 w-4"/>}
+                                {formatCurrency(Math.abs(expected.diff))}
+                            </div>
+                        </TableCell>
                         <TableCell className="text-right">
                             {isForecastLoading && !forecasts[siteId as SiteId] ? ( <div className="flex justify-end"><Loader2 className="h-4 w-4 animate-spin" /></div> ) : (
                             <div className="flex items-center justify-end gap-1">
@@ -429,7 +450,6 @@ export function GlobalDashboard() {
                             </div>
                             )}
                         </TableCell>
-                        <TableCell className="text-right hidden lg:table-cell">{data.retention.toFixed(1)}%</TableCell>
                         <TableCell className="text-right hidden lg:table-cell">{data.nps.toFixed(2)}</TableCell>
                         <TableCell className="text-right">
                           {role === 'CEO' &&

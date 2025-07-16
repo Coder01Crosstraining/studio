@@ -8,7 +8,7 @@ import { Line, LineChart, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import type { Site, SiteId, DailyReport, UserRole, TaskTemplate, TaskInstance } from '@/lib/types';
 import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/flows/generate-sales-forecast-flow';
-import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle, CheckCircle2, Calculator } from 'lucide-react';
+import { Info, Loader2, Pencil, RefreshCw, ClipboardCheck, AlertCircle, CheckCircle2, Calculator, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Tooltip as UITooltip, TooltipContent as UITooltipContent, TooltipTrigger as UITooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { format, getDay, getDate, getDaysInMonth, startOfDay, startOfMonth, startOfWeek, endOfDay, endOfWeek, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -358,6 +358,23 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
         setIsRecalculatingRevenue(false);
     }
 
+    const expectedCompliance = useMemo(() => {
+        if (!kpiData || kpiData.monthlyGoal === 0) return { diff: 0, tooltip: '' };
+
+        const monthProgress = calculateMonthProgress(new Date());
+        const totalEffectiveDays = monthProgress.effectiveBusinessDaysPast + monthProgress.effectiveBusinessDaysRemaining;
+        
+        if (totalEffectiveDays === 0) return { diff: 0, tooltip: 'El mes no ha comenzado.' };
+
+        const dailyGoal = kpiData.monthlyGoal / totalEffectiveDays;
+        const expectedRevenue = dailyGoal * monthProgress.effectiveBusinessDaysPast;
+        const diff = kpiData.revenue - expectedRevenue;
+
+        const tooltip = `Ritmo esperado para hoy: ${formatCurrency(expectedRevenue)}.`;
+
+        return { diff, tooltip };
+    }, [kpiData]);
+
 
     const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 
@@ -388,6 +405,23 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Meta del Mes</CardTitle></CardHeader>
                         <CardContent><div className="text-2xl font-bold">{formatCurrency(kpiData.monthlyGoal)}</div></CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                           <CardTitle className="text-sm font-medium">Cumplimiento Esperado</CardTitle>
+                           <UITooltip>
+                               <UITooltipTrigger asChild>
+                                  <Info className="h-4 w-4 text-muted-foreground cursor-pointer" />
+                               </UITooltipTrigger>
+                               <UITooltipContent><p>{expectedCompliance.tooltip}</p></UITooltipContent>
+                           </UITooltip>
+                        </CardHeader>
+                        <CardContent>
+                            <div className={cn("text-2xl font-bold flex items-center gap-2", expectedCompliance.diff > 0 ? 'text-green-600' : expectedCompliance.diff < 0 ? 'text-red-600' : 'text-amber-600')}>
+                                {expectedCompliance.diff > 0 ? <TrendingUp /> : expectedCompliance.diff < 0 ? <TrendingDown /> : <Minus />}
+                                {formatCurrency(Math.abs(expectedCompliance.diff))}
+                            </div>
+                        </CardContent>
                     </Card>
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -433,14 +467,13 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                         </CardContent>
                     </Card>
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Tasa de Retención (Mes)</CardTitle></CardHeader>
-                        <CardContent><div className="text-2xl font-bold">{kpiData.retention.toFixed(1)}%</div></CardContent>
-                    </Card>
-                    <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">NPS (Mes Actual)</CardTitle></CardHeader>
                         <CardContent><div className="text-2xl font-bold">{kpiData.nps.toFixed(2)}</div></CardContent>
                     </Card>
-                    {role === 'SiteLeader' && <PendingTasksCard summary={isTasksLoading ? null : pendingTasks} onOpenTasks={() => setIsTaskDialogOpen(true)} />}
+                    {role === 'SiteLeader' ? <PendingTasksCard summary={isTasksLoading ? null : pendingTasks} onOpenTasks={() => setIsTaskDialogOpen(true)} /> : <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Tasa de Retención (Mes)</CardTitle></CardHeader>
+                        <CardContent><div className="text-2xl font-bold">{kpiData.retention.toFixed(1)}%</div></CardContent>
+                    </Card>}
                 </div>
                 <div className="grid grid-cols-1 gap-4">
                 <Card>
