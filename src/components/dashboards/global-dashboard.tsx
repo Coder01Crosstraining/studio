@@ -47,9 +47,9 @@ function calculateMonthProgress(today: Date) {
     const dayOfWeek = getDay(currentDate); // 0=Sun, 1=Mon, ..., 6=Sat
     const dateString = currentDate.toISOString().split('T')[0];
 
-    if (dayOfWeek === 0 || colombianHolidays2024.includes(dateString)) { // Sunday or Holiday
+    if (colombianHolidays2024.includes(dateString)) { // Holiday
       effectiveBusinessDaysPast += 0.5;
-    } else { // Weekday or Saturday
+    } else { // Weekday or Weekend
       effectiveBusinessDaysPast += 1;
     }
   }
@@ -57,12 +57,11 @@ function calculateMonthProgress(today: Date) {
   let effectiveBusinessDaysRemaining = 0;
   for (let day = elapsedDaysInMonth + 1; day <= totalDaysInMonth; day++) {
      const currentDate = new Date(year, month, day);
-    const dayOfWeek = getDay(currentDate);
     const dateString = currentDate.toISOString().split('T')[0];
     
-    if (dayOfWeek === 0 || colombianHolidays2024.includes(dateString)) {
+    if (colombianHolidays2024.includes(dateString)) {
       effectiveBusinessDaysRemaining += 0.5;
-    } else { // Weekday or Saturday
+    } else { // Weekday or Weekend
       effectiveBusinessDaysRemaining += 1;
     }
   }
@@ -81,7 +80,7 @@ export function GlobalDashboard() {
   const [kpiData, setKpiData] = useState<Record<SiteId, Site>>({} as Record<SiteId, Site>);
   const [isKpiLoading, setIsKpiLoading] = useState(true);
   const [forecasts, setForecasts] = useState<Record<SiteId, GenerateSalesForecastOutput | null>>({});
-  const [isForecastLoading, setIsForecastLoading] = useState(true);
+  const [isForecastLoading, setIsForecastLoading] = useState<Record<SiteId, boolean>>({});
   const [isRecalculating, setIsRecalculating] = useState(false);
   const { toast } = useToast();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -176,49 +175,53 @@ export function GlobalDashboard() {
   }, [role, toast]);
 
 
-  const fetchAndCacheForecasts = React.useCallback(async () => {
-    if (Object.keys(kpiData).length === 0) return;
-    
-    setIsForecastLoading(true);
-    setIsRecalculating(true);
-    
+  const fetchForecastForSite = React.useCallback(async (siteId: SiteId, siteData: Site) => {
+    setIsForecastLoading(prev => ({...prev, [siteId]: true}));
     try {
-      const sitesToFetch = Object.keys(kpiData) as SiteId[];
       const monthProgress = calculateMonthProgress(new Date());
+      const reportsRef = collection(db, 'sites', siteId, 'daily-reports');
+      const q = query(reportsRef, orderBy('date', 'desc'), limit(7));
+      const querySnapshot = await getDocs(q);
+      const historicalRevenue = querySnapshot.docs.map(doc => (doc.data() as DailyReport).newRevenue);
 
-      const forecastPromises = sitesToFetch.map(async (siteId) => {
-         const reportsRef = collection(db, 'sites', siteId, 'daily-reports');
-         const q = query(reportsRef, orderBy('date', 'desc'), limit(7));
-         const querySnapshot = await getDocs(q);
-         const historicalRevenue = querySnapshot.docs.map(doc => (doc.data() as DailyReport).newRevenue);
-
-        return generateSalesForecast({
-          historicalRevenue: historicalRevenue,
-          currentMonthRevenue: kpiData[siteId].revenue,
-          ...monthProgress,
-        }).catch(err => {
-          console.error(`Error fetching forecast for ${siteId}:`, err);
-          return null;
-        })
-      });
-      const results = await Promise.all(forecastPromises);
-      
-      const newForecasts: Record<SiteId, GenerateSalesForecastOutput | null> = {};
-      sitesToFetch.forEach((siteId, index) => {
-          newForecasts[siteId] = results[index] as GenerateSalesForecastOutput;
+      const result = await generateSalesForecast({
+        historicalRevenue: historicalRevenue,
+        currentMonthRevenue: siteData.revenue,
+        ...monthProgress,
       });
 
-      sessionStorage.setItem('vibra-forecasts', JSON.stringify(newForecasts));
-      setForecasts(newForecasts);
+      sessionStorage.setItem(`vibra-forecast-${siteId}`, JSON.stringify(result));
+      sessionStorage.setItem(`vibra-forecast-revenue-${siteId}`, siteData.revenue.toString());
+      setForecasts(prev => ({ ...prev, [siteId]: result }));
 
     } catch (error) {
-      console.error("Failed to generate forecasts:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo generar el pronóstico.' });
+      console.error(`Failed to generate forecast for ${siteId}:`, error);
+      toast({ variant: 'destructive', title: 'Error de Pronóstico', description: `No se pudo generar el pronóstico para ${siteData.name}.` });
+      setForecasts(prev => ({ ...prev, [siteId]: null }));
     } finally {
-      setIsForecastLoading(false);
-      setIsRecalculating(false);
+      setIsForecastLoading(prev => ({...prev, [siteId]: false}));
     }
-  }, [kpiData, toast]);
+  }, [toast]);
+  
+  const fetchAllForecasts = React.useCallback(async (forceRefresh = false) => {
+    if (Object.keys(kpiData).length === 0) return;
+    setIsRecalculating(true);
+    const sitesToFetch = Object.values(kpiData);
+    
+    const forecastPromises = sitesToFetch.map(site => {
+        const cachedForecastRaw = sessionStorage.getItem(`vibra-forecast-${site.id}`);
+        const cachedRevenue = sessionStorage.getItem(`vibra-forecast-revenue-${site.id}`);
+
+        if (cachedForecastRaw && !forceRefresh && cachedRevenue === site.revenue.toString()) {
+            setForecasts(prev => ({ ...prev, [site.id]: JSON.parse(cachedForecastRaw) }));
+            return Promise.resolve();
+        }
+        return fetchForecastForSite(site.id, site);
+    });
+
+    await Promise.all(forecastPromises);
+    setIsRecalculating(false);
+  }, [kpiData, fetchForecastForSite]);
 
   // Fetch KPI data in real-time
   useEffect(() => {
@@ -234,18 +237,13 @@ export function GlobalDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // Check for cached forecasts on mount, or fetch new ones
+  // Fetch forecasts when KPI data is loaded or changed
   useEffect(() => {
-    if (Object.keys(kpiData).length === 0) return;
-    const cachedForecasts = sessionStorage.getItem('vibra-forecasts');
-    if (cachedForecasts) {
-        setForecasts(JSON.parse(cachedForecasts));
-        setIsForecastLoading(false);
-    } else {
-        fetchAndCacheForecasts();
+    if (Object.keys(kpiData).length > 0) {
+      fetchAllForecasts(false);
     }
-  }, [kpiData, fetchAndCacheForecasts]);
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kpiData]); // We only want to run this when kpiData itself changes.
 
   const handleOpenEditModal = (siteId: SiteId) => {
     setEditingSite(siteId);
@@ -284,14 +282,15 @@ export function GlobalDashboard() {
   const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
 
   const globalSummary = useMemo(() => {
-    const siteCount = Object.keys(kpiData).length;
+    const siteValues = Object.values(kpiData);
+    const siteCount = siteValues.length;
     if (siteCount === 0) return { revenue: 0, retention: 0, nps: 0, salesForecast: 0, monthlyGoal: 0 };
     
-    const totalRevenue = Object.values(kpiData).reduce((sum, site) => sum + site.revenue, 0);
-    const avgRetention = Object.values(kpiData).reduce((sum, site) => sum + site.retention, 0) / siteCount;
-    const avgNps = Object.values(kpiData).reduce((sum, site) => sum + site.nps, 0) / siteCount;
+    const totalRevenue = siteValues.reduce((sum, site) => sum + (site.revenue || 0), 0);
+    const avgRetention = siteValues.reduce((sum, site) => sum + (site.retention || 0), 0) / siteCount;
+    const avgNps = siteValues.reduce((sum, site) => sum + (site.nps || 0), 0) / siteCount;
     const totalForecast = Object.values(forecasts).reduce((sum, site) => sum + (site?.forecast || 0), 0);
-    const totalMonthlyGoal = Object.values(kpiData).reduce((sum, site) => sum + site.monthlyGoal, 0);
+    const totalMonthlyGoal = siteValues.reduce((sum, site) => sum + (site.monthlyGoal || 0), 0);
     return { revenue: totalRevenue, retention: avgRetention, nps: avgNps, salesForecast: totalForecast, monthlyGoal: totalMonthlyGoal };
   }, [kpiData, forecasts]);
   
@@ -340,6 +339,10 @@ export function GlobalDashboard() {
     return 'on_track';
   }
 
+  const isGlobalForecastLoading = useMemo(() => {
+    return Object.values(isForecastLoading).some(loading => loading);
+  }, [isForecastLoading]);
+
   if (isKpiLoading) {
     return <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -373,13 +376,13 @@ export function GlobalDashboard() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Pronóstico Ventas (Global)</CardTitle>
-                    <Button variant="ghost" size="icon" onClick={() => fetchAndCacheForecasts()} disabled={isRecalculating}>
+                    <Button variant="ghost" size="icon" onClick={() => fetchAllForecasts(true)} disabled={isRecalculating}>
                       {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                       <span className="sr-only">Recalcular Pronóstico</span>
                     </Button>
                 </CardHeader>
                 <CardContent>
-                    {isForecastLoading && Object.keys(forecasts).length === 0 ? (
+                    {isGlobalForecastLoading && Object.keys(forecasts).length === 0 ? (
                         <div className="flex items-center gap-2 pt-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Calculando...</span></div>
                     ) : (
                         <div className={cn("text-2xl font-bold flex items-center gap-2", {
@@ -433,7 +436,7 @@ export function GlobalDashboard() {
                             <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm pt-2">
                                 <div className="space-y-1">
                                     <p className="text-muted-foreground">Pronóstico</p>
-                                    {isForecastLoading && !forecast ? (
+                                    {isForecastLoading[siteId] ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
                                         <p className="font-semibold">{formatCurrency(forecast?.forecast || 0)}</p>
@@ -501,7 +504,7 @@ export function GlobalDashboard() {
                             </Tooltip>
                         </TableCell>
                         <TableCell className="text-right">
-                            {isForecastLoading && !forecasts[siteId as SiteId] ? ( <div className="flex justify-end"><Loader2 className="h-4 w-4 animate-spin" /></div> ) : (
+                            {isForecastLoading[siteId] ? ( <div className="flex justify-end"><Loader2 className="h-4 w-4 animate-spin" /></div> ) : (
                             <div className="flex items-center justify-end gap-1">
                                 <div className={cn("flex items-center justify-end gap-1 font-medium", 
                                     forecastStatus === 'above' && 'text-green-600',

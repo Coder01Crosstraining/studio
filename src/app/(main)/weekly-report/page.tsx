@@ -20,8 +20,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, runTransaction, serverTimestamp, where, query, getDocs } from 'firebase/firestore';
 import type { Site } from '@/lib/types';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 const reportSchema = z.object({
   date: z.date({ required_error: "Se requiere una fecha para el reporte." }),
@@ -39,6 +40,8 @@ export default function DailyReportPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [npsValue, setNpsValue] = useState<number | null>(null);
   const [isNpsLoading, setIsNpsLoading] = useState(true);
+  const [isCheckingForExisting, setIsCheckingForExisting] = useState(false);
+  const [showExistingReportDialog, setShowExistingReportDialog] = useState(false);
 
   const form = useForm<z.infer<typeof reportSchema>>({
     resolver: zodResolver(reportSchema),
@@ -51,6 +54,8 @@ export default function DailyReportPage() {
       lessonLearned: '',
     },
   });
+
+  const selectedDate = form.watch("date");
 
   useEffect(() => {
     async function fetchNps() {
@@ -82,6 +87,27 @@ export default function DailyReportPage() {
     }
     fetchNps();
   }, [user, toast]);
+
+  useEffect(() => {
+    const checkForExistingReport = async () => {
+        if (!user?.siteId || !selectedDate) return;
+        setIsCheckingForExisting(true);
+        try {
+            const reportDateStr = format(selectedDate, 'yyyy-MM-dd');
+            const reportsRef = collection(db, 'sites', user.siteId, 'daily-reports');
+            const q = query(reportsRef, where('date', '==', reportDateStr));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                setShowExistingReportDialog(true);
+            }
+        } catch (error) {
+            console.error("Error checking for existing report:", error);
+        } finally {
+            setIsCheckingForExisting(false);
+        }
+    }
+    checkForExistingReport();
+  }, [selectedDate, user?.siteId])
   
   async function onSubmit(values: z.infer<typeof reportSchema>) {
     if (!user || !user.siteId) {
@@ -124,6 +150,8 @@ export default function DailyReportPage() {
             title: "¡Éxito!",
             description: "Tu reporte diario ha sido enviado.",
         });
+        // Clear cached forecast for the user's site to trigger refresh on dashboard
+        sessionStorage.removeItem(`vibra-forecast-${user.siteId}`);
         router.push('/');
     } catch (error) {
         console.error("Error submitting report: ", error);
@@ -214,12 +242,28 @@ export default function DailyReportPage() {
                 <FormItem><FormLabel>Lección Aprendida del Día</FormLabel><FormControl><Textarea placeholder="La lección aprendida de hoy es..." {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               
-              <Button type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" disabled={isLoading || isCheckingForExisting}>
+                {(isLoading || isCheckingForExisting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Enviar Reporte
               </Button>
             </form>
           </Form>
+
+           <AlertDialog open={showExistingReportDialog} onOpenChange={setShowExistingReportDialog}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reporte Duplicado</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Ya existe un reporte para la fecha seleccionada ({selectedDate && format(selectedDate, 'PPP', { locale: es })}). ¿Deseas volver y cambiar la fecha?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setShowExistingReportDialog(false)}>Cambiar Fecha</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => router.push('/report-history')}>Ir al Historial</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            
         </CardContent>
       </Card>
     </div>

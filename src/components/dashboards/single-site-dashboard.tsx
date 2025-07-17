@@ -55,9 +55,9 @@ function calculateMonthProgress(today: Date) {
     const dayOfWeek = getDay(currentDate); // 0=Sun, 1=Mon, ..., 6=Sat
     const dateString = currentDate.toISOString().split('T')[0];
 
-    if (dayOfWeek === 0 || dayOfWeek === 6 || colombianHolidays2024.includes(dateString)) { // Sunday, Saturday or Holiday
+    if (colombianHolidays2024.includes(dateString)) { // Holiday
       effectiveBusinessDaysPast += 0.5;
-    } else { // Weekday
+    } else { // Weekday or Weekend
       effectiveBusinessDaysPast += 1;
     }
   }
@@ -65,12 +65,11 @@ function calculateMonthProgress(today: Date) {
   let effectiveBusinessDaysRemaining = 0;
   for (let day = elapsedDaysInMonth + 1; day <= totalDaysInMonth; day++) {
      const currentDate = new Date(year, month, day);
-    const dayOfWeek = getDay(currentDate);
     const dateString = currentDate.toISOString().split('T')[0];
     
-    if (dayOfWeek === 0 || dayOfWeek === 6 || colombianHolidays2024.includes(dateString)) {
+    if (colombianHolidays2024.includes(dateString)) {
       effectiveBusinessDaysRemaining += 0.5;
-    } else { // Weekday
+    } else { // Weekday or Weekend
       effectiveBusinessDaysRemaining += 1;
     }
   }
@@ -218,10 +217,20 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
     }, [fetchTasks]);
 
 
-    const fetchAndCacheForecast = React.useCallback(async () => {
+    const fetchForecast = React.useCallback(async (forceRefresh = false) => {
         if (!kpiData) return;
+        
+        const cachedForecastRaw = sessionStorage.getItem(`vibra-forecast-${siteId}`);
+        const cachedRevenue = sessionStorage.getItem(`vibra-forecast-revenue-${siteId}`);
+
+        if (cachedForecastRaw && !forceRefresh && cachedRevenue === kpiData.revenue.toString()) {
+            setForecast(JSON.parse(cachedForecastRaw));
+            setIsForecastLoading(false);
+            return;
+        }
+
         setIsForecastLoading(true);
-        setIsRecalculating(true);
+        if(forceRefresh) setIsRecalculating(true);
         try {
             const monthProgress = calculateMonthProgress(new Date());
             const reportsRef = collection(db, 'sites', siteId, 'daily-reports');
@@ -234,19 +243,16 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                 currentMonthRevenue: kpiData.revenue,
                 ...monthProgress,
             });
-
-            const cachedForecastsRaw = sessionStorage.getItem('vibra-forecasts');
-            const allForecasts = cachedForecastsRaw ? JSON.parse(cachedForecastsRaw) : {};
-            allForecasts[siteId] = result;
-            sessionStorage.setItem('vibra-forecasts', JSON.stringify(allForecasts));
             
+            sessionStorage.setItem(`vibra-forecast-${siteId}`, JSON.stringify(result));
+            sessionStorage.setItem(`vibra-forecast-revenue-${siteId}`, kpiData.revenue.toString());
             setForecast(result);
         } catch (error) {
             console.error("Failed to generate forecast:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'No se pudo generar el pronóstico.' });
         } finally {
             setIsForecastLoading(false);
-            setIsRecalculating(false);
+            if(forceRefresh) setIsRecalculating(false);
         }
     }, [kpiData, siteId, toast]);
 
@@ -293,21 +299,11 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
 
     // Generate Forecast, checking cache first
     useEffect(() => {
-        if (!kpiData) return;
-        
-        const cachedForecastsRaw = sessionStorage.getItem('vibra-forecasts');
-        if (cachedForecastsRaw) {
-            const allForecasts = JSON.parse(cachedForecastsRaw);
-            if (allForecasts[siteId]) {
-                setForecast(allForecasts[siteId]);
-                setIsForecastLoading(false);
-                return;
-            }
+        if (kpiData) {
+            fetchForecast(false);
         }
-        
-        fetchAndCacheForecast();
-
-    }, [kpiData, siteId, fetchAndCacheForecast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [kpiData]); // We only want to run this when kpiData itself changes.
 
     const handleKpiSubmit = async (values: z.infer<typeof kpiSchema>) => {
         if (!siteId || !kpiData) return;
@@ -436,7 +432,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                                 {forecast && (
                                     <Tooltip><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground cursor-pointer" /></TooltipTrigger><TooltipContent><p className="max-w-xs">{forecast.reasoning}</p></TooltipContent></Tooltip>
                                 )}
-                                <Button variant="ghost" size="icon" onClick={() => fetchAndCacheForecast()} disabled={isRecalculating}>
+                                <Button variant="ghost" size="icon" onClick={() => fetchForecast(true)} disabled={isRecalculating}>
                                     {isRecalculating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                     <span className="sr-only">Recalcular Pronóstico</span>
                                 </Button>
@@ -465,7 +461,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                             </div>
                         </CardHeader>
                         <CardContent>
-                            {isForecastLoading && !forecast ? (
+                            {isForecastLoading ? (
                                 <div className="flex items-center gap-2 pt-1"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Calculando...</span></div>
                             ) : (
                                 <div className={cn("text-2xl font-bold flex items-center gap-2", {
