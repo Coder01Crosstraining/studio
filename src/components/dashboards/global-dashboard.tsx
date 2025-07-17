@@ -8,6 +8,7 @@ import { generateSalesForecast, type GenerateSalesForecastOutput } from '@/ai/fl
 import { Info, Loader2, Pencil, RefreshCw, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { getDay, getDate, getDaysInMonth, format, parse } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -343,6 +344,8 @@ export function GlobalDashboard() {
     return Object.values(isForecastLoading).some(loading => loading);
   }, [isForecastLoading]);
 
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+
   if (isKpiLoading) {
     return <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -370,7 +373,8 @@ export function GlobalDashboard() {
                          {compliance.status === 'on_track' && <Minus />}
                          {formatCurrency(compliance.difference)}
                     </div>
-                    <p className="text-xs text-muted-foreground">Proyectado: {formatCurrency(compliance.expected)}</p>
+                    <p className="text-xs text-muted-foreground">Proyectado: {formatCurrency(compliance.expected)} / Real: {formatCurrency(globalSummary.revenue)}</p>
+                    <p className="text-xs text-muted-foreground/80">a fecha de {capitalize(format(new Date(), 'd \'de\' MMMM', { locale: es }))}</p>
                 </CardContent>
             </Card>
             <Card>

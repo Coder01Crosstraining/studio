@@ -382,6 +382,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
 
 
     const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+    const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
     if (isKpiLoading || !kpiData) {
         return <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -423,6 +424,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                                 {formatCurrency(compliance.difference)}
                            </div>
                            <p className="text-xs text-muted-foreground">Proyectado: {formatCurrency(compliance.expected)} / Real: {formatCurrency(kpiData.revenue)}</p>
+                           <p className="text-xs text-muted-foreground/80">a fecha de {capitalize(format(new Date(), 'd \'de\' MMMM', { locale: es }))}</p>
                         </CardContent>
                     </Card>
                     <Card>
