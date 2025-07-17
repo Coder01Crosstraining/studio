@@ -466,13 +466,13 @@ export function GlobalDashboard() {
             <CardContent className="p-0">
                 <Table>
                     <TableHeader><TableRow>
-                        <TableHead className="min-w-[150px]">Sede</TableHead>
-                        <TableHead className="text-right min-w-[150px]">Ventas a la Fecha</TableHead>
-                        <TableHead className="text-right min-w-[150px]">Meta del Mes</TableHead>
-                        <TableHead className="text-right min-w-[150px]">Cumplimiento (%)</TableHead>
-                        <TableHead className="text-right min-w-[150px]">Desvío vs. Proyectado</TableHead>
-                        <TableHead className="text-right min-w-[150px]">Pronóstico Ventas</TableHead>
-                        <TableHead className="text-right min-w-[120px] hidden lg:table-cell">NPS</TableHead>
+                        <TableHead className="w-[150px]">Sede</TableHead>
+                        <TableHead className="text-right">Ventas a la Fecha</TableHead>
+                        <TableHead className="text-right">Meta del Mes</TableHead>
+                        <TableHead className="text-right">Cumplimiento (%)</TableHead>
+                        <TableHead className="text-right">Desvío vs. Proyectado</TableHead>
+                        <TableHead className="text-right">Pronóstico Ventas</TableHead>
+                        <TableHead className="text-right hidden lg:table-cell">NPS</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                     </TableRow></TableHeader>
                     <TableBody>
@@ -483,7 +483,7 @@ export function GlobalDashboard() {
                         const forecastStatus = getForecastStatus(forecast?.forecast || 0, data.monthlyGoal);
                         return (
                         <TableRow key={siteId}>
-                        <TableCell className="font-medium">{siteMap.get(siteId as SiteId) || siteId}</TableCell>
+                        <TableCell className="font-medium whitespace-nowrap">{siteMap.get(siteId as SiteId) || siteId}</TableCell>
                         <TableCell className="text-right">{formatCurrency(data.revenue)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(data.monthlyGoal)}</TableCell>
                         <TableCell className="text-right font-medium">{goalCompletion.toFixed(1)}%</TableCell>

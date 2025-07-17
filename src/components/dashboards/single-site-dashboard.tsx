@@ -390,7 +390,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
     return (
         <TooltipProvider>
             <div className="space-y-4">
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                            <CardTitle className="text-sm font-medium">Ventas a la Fecha</CardTitle>
