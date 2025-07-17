@@ -279,7 +279,7 @@ export function GlobalDashboard() {
     }
   };
 
-  const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+  const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
   const globalSummary = useMemo(() => {
     const siteValues = Object.values(kpiData);

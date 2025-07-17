@@ -381,7 +381,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
     }, [forecast, kpiData]);
 
 
-    const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+    const formatCurrency = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
     if (isKpiLoading || !kpiData) {
         return <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -491,7 +491,7 @@ export function SingleSiteDashboard({ siteId, role }: { siteId: SiteId, role: Us
                     <ChartContainer config={chartConfig} className="h-[350px] w-full">
                         <LineChart data={dailyData || []}>
                         <CartesianGrid vertical={false} /><XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} /><YAxis tickFormatter={(value) => `$${value / 1000}k`} />
-                        <RechartsTooltip content={<ChartTooltipContent formatter={(value, name) => [formatCurrency(value as number), name === 'revenue' ? 'Ingresos' : 'Meta']} />} />
+                        <RechartsTooltip content={<ChartTooltipContent formatter={(value) => formatCurrency(value as number)} />} />
                         <Line type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={2} dot={true} /><Line type="monotone" dataKey="goal" stroke="var(--color-goal)" strokeDasharray="5 5" />
                         </LineChart>
                     </ChartContainer>
