@@ -13,8 +13,8 @@ const directLinkTools = [
   {
     name: 'CLez',
     icon: AppWindow,
-    href: '#', // Placeholder for URI scheme
-    description: 'Abrir sistema interno CLez',
+    href: 'https://app.clez.co/',
+    description: 'Ir a CLez CRM',
   },
   {
     name: 'Kommo',
