@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Wrench, AppWindow, MessageSquare, LayoutTemplate, ClipboardList, Sheet, X, FileText, ExternalLink, Laptop } from 'lucide-react';
+import { Wrench, AppWindow, MessageSquare, LayoutTemplate, ClipboardList, Sheet, X, FileText, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from './card';
 
@@ -43,31 +43,6 @@ const sheetFormats = [
     { name: "Proceso de Descargos", href: "https://sheets.google.com/" },
 ]
 
-function DesktopAppDialog() {
-    return (
-        <Dialog>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <DialogTrigger asChild>
-                         <Button size="icon" className="rounded-full w-12 h-12 shadow-lg" aria-label="Abrir sistema interno">
-                            <Laptop className="h-6 w-6" />
-                        </Button>
-                    </DialogTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="left"><p>Abrir sistema interno (escritorio)</p></TooltipContent>
-            </Tooltip>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Abrir Sistema Interno</DialogTitle>
-                    <DialogDescription>
-                        Para acceder al sistema de escritorio, por favor, ejecútalo directamente desde tu computadora. Esta herramienta no se puede abrir desde el navegador.
-                    </DialogDescription>
-                </DialogHeader>
-            </DialogContent>
-        </Dialog>
-    )
-}
-
 export function ToolsToolbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSheetsDialogOpen, setIsSheetsDialogOpen] = useState(false);
@@ -83,9 +58,6 @@ export function ToolsToolbar() {
               isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
             )}
           >
-            {/* --- Desktop App Dialog --- */}
-            <DesktopAppDialog />
-
             {/* --- Formatos (Google Sheets) Dialog Trigger --- */}
              <Dialog open={isSheetsDialogOpen} onOpenChange={setIsSheetsDialogOpen}>
                 <Tooltip>
